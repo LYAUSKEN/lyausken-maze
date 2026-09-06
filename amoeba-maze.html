@@ -190,7 +190,7 @@ var amoeba=0,amoebaOn=false,amoebaT=0,lastEaten=-1;
 var blockers=[];
 var lures=[],lureStock=LURE_MAX,lurePressed=false;
 var picks=PICK_MAX,aiming=false,pickPressed=false,dirPressed=false,breakFx=[];
-var gates=[],warpT=-9999,warpFx=[],coins=[],openT=0;
+var gates=[],warpT=-9999,warpFx=[],coins=[],openT=0,warpHold=null;
 var bomb=null,hasBomb=false,fuse=null,respawnAt=0,boomFx=[],bombPressed=false;
 var holes=[],holeFx=[],aHoleT=0,aHoleCool=0,aPrevMode='trail',aHolePos=null,bed=null,skipBell=false;
 var GATE_COLORS=['#50f0ff','#b6ff3c'];   // 組ごとの色
@@ -579,10 +579,12 @@ function makeNameInput(){
 }
 function nameBox(){return {x:W*0.055,y:H*0.515,w:W*0.56,h:Math.max(30,H*0.050)};}
 function startBtn(){var w=W*0.46,h=Math.max(34,H*0.055);return {x:(W-w)/2,y:H*0.925,w:w,h:h};}
+function howBtn(){var w=W*0.52,h=Math.max(28,H*0.042);return {x:(W-w)/2,y:H*0.855,w:w,h:h};}
+function closeBtn(){var w=W*0.44,h=Math.max(32,H*0.05);return {x:(W-w)/2,y:H-h-14,w:w,h:h};}
 function placeNameInput(){
   if(!nameInput)return;
   try{
-    if(state!=='title'){nameInput.style.display='none';nameInput.blur();return;}
+    if(state!=='title'){nameInput.style.display='none';try{nameInput.blur();}catch(e){}return;}
     var wr=document.getElementById('wrap').getBoundingClientRect(),b=nameBox();
     nameInput.style.display='block';
     nameInput.style.left=(wr.left+b.x)+'px';
@@ -1086,7 +1088,8 @@ function useBomb(){
   }
   if(!amoebaOn){beep(140,0.12,0.05,'square');return;}
   hasBomb=false;
-  fuse={t0:now,from:Math.max(0,dots.length-1)};
+  fuse={t0:now,from:Math.max(0,dots.length-1),
+        n0:Math.max(0,(dots.length-1)-Math.floor(amoebaOn?amoeba:0))};  // 押した時点の丸の数
   idleT=now;
   noiseBurst(FUSE_MS/1000,0.05,4000,1200);
   beep(300,0.1,0.04,'square');
@@ -1096,10 +1099,12 @@ function explode(){
   boomFx.push({x:a.x,y:a.y,t:now});
   score+=BOMB_PT;
   pop(a.x,a.y-cell*0.3,'+'+BOMB_PT,'#ffd400');
-  var burned=Math.max(0,Math.round((fuse?fuse.from:0)-Math.floor(amoeba)));
+  var burned=fuse?fuse.n0:0;
   if(burned){
-    score+=burned*FUSE_PT;
-    pop(a.x,a.y-cell*1.1,'DOTS '+burned+' +'+(burned*FUSE_PT),'#ffd400');
+    score+=burned*DOT_PT;                       // ゴールと同じ、丸そのものの点
+    score+=burned*FUSE_PT;                      // 導火線ボーナス
+    pop(a.x,a.y-cell*1.1,'DOTS '+burned+' +'+(burned*DOT_PT),'#ffd400');
+    pop(a.x,a.y-cell*1.9,'FUSE +'+(burned*FUSE_PT),'#ff9a3c');
   }
   if(girl.state==='eating'&&!girl.eater){      // 食事中を吹き飛ばせば少女は助かる
     girl.state='follow';girl.x=px;girl.y=py;hist=[{x:px,y:py}];
@@ -1140,6 +1145,7 @@ function gatePartner(i){
 }
 function doWarp(g2){
   pc={r:g2.r,c:g2.c};dir=null;prog=0;warpT=now;
+  warpHold=held||'x';                // 出た先でいったん停止。押し直すまで動かない
   var p=ctr(pc.r,pc.c);px=p.x;py=p.y;
   hist=[{x:px,y:py}];
   if(girl.state==='follow'){girl.x=px;girl.y=py;}
@@ -1176,7 +1182,7 @@ function newStage(){
   pops=[];pausePressed=false;
   picks=(stage>=PICK_FROM)?PICK_MAX2:PICK_MAX;
   aiming=false;pickPressed=false;dirPressed=false;breakFx=[];
-  aMode='trail';aPath=null;aPi=0;aProg=0;aTarget=null;aFreeze=null;
+  aMode='trail';aPath=null;aPi=0;aProg=0;aTarget=null;aFreeze=null;warpHold=null;
   score=0;tBonus=TIME_MAX;
   placeBlockers();
   state='ready';readyT=now;
@@ -1314,7 +1320,12 @@ function tryWarp(){
   return true;
 }
 function step(ms){
-  if(state!=='playing'||!held) return;
+  if(state!=='playing') return;
+  if(warpHold){
+    if(held===warpHold) return;      // ワープ直後、同じ方向を押しっぱなしなら止まったまま
+    warpHold=null;
+  }
+  if(!held) return;
   if(tryWarp()) return;
   if(dir&&prog>0&&prog<1&&held===OPP[dir]){       // 通路の途中で反転
     pc=nb(pc,dir);dir=OPP[dir];prog=1-prog;
@@ -1688,8 +1699,15 @@ function tap(x,y){
   audioUnlock();
   if(state==='title'){
     if(x===undefined)return;
-    var sb=startBtn();
+    var sb=startBtn(),hb=howBtn();
+    if(inBox(hb,x,y,8)){beep(760,0.09,0.05,'triangle');state='help';helpScroll=0;placeNameInput();return;}
     if(inBox(sb,x,y,8)){beep(880,0.09,0.05,'triangle');startGame();}
+    return;
+  }
+  if(state==='help'){
+    if(x===undefined)return;
+    var cb=closeBtn();
+    if(inBox(cb,x,y,10)){beep(400,0.08,0.045,'triangle');state='title';placeNameInput();}
     return;
   }
   if(state==='opening'){endOpening();return;}
@@ -1738,11 +1756,24 @@ function tap(x,y){
 cv.addEventListener('touchstart',function(e){
   e.preventDefault();
   var r=cv.getBoundingClientRect(),t0=e.touches[0];
+  if(state==='help'&&t0)helpDragY=t0.clientY-r.top;
   if(t0)tap(t0.clientX-r.left,t0.clientY-r.top); else tap();
+  if(state!=='help')readTouches(e);
+},{passive:false});
+cv.addEventListener('touchmove',function(e){
+  e.preventDefault();
+  if(state==='help'){
+    var r=cv.getBoundingClientRect(),t0=e.touches[0];
+    if(t0){
+      var yy=t0.clientY-r.top;
+      if(helpDragY!==null) helpScroll=Math.max(-helpMax,Math.min(0,helpScroll+(yy-helpDragY)));
+      helpDragY=yy;
+    }
+    return;
+  }
   readTouches(e);
 },{passive:false});
-cv.addEventListener('touchmove',function(e){e.preventDefault();readTouches(e);},{passive:false});
-cv.addEventListener('touchend',function(e){e.preventDefault();readTouches(e);},{passive:false});
+cv.addEventListener('touchend',function(e){e.preventDefault();helpDragY=null;readTouches(e);},{passive:false});
 cv.addEventListener('touchcancel',function(e){e.preventDefault();held=null;lurePressed=false;pickPressed=false;dirPressed=false;},{passive:false});
 cv.addEventListener('mousedown',function(e){
   var r=cv.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;
@@ -1784,6 +1815,11 @@ window.addEventListener('keyup',function(e){
 document.addEventListener('visibilitychange',function(){
   if(!document.hidden&&ac&&ac.state!=='running'){try{ac.resume();}catch(e){}}
 });
+cv.addEventListener('wheel',function(e){
+  if(state!=='help')return;
+  e.preventDefault();
+  helpScroll=Math.max(-helpMax,Math.min(0,helpScroll-e.deltaY));
+},{passive:false});
 window.addEventListener('resize',resize);
 
 /* ================= 更新 ================= */
@@ -3068,6 +3104,112 @@ function drawHUD(){
     }
   }
 }
+var helpScroll=0,helpDragY=null,helpMax=0;
+var HELP=[
+['h','遊び方','HOW TO PLAY'],
+['s','目的','GOAL'],
+['t','信号のスタートから、ゴールの旗を目指す。','Start at the signal, reach the goal flag.'],
+['t','通った跡に黄色い丸が残る。1つ30点。','A yellow dot is left behind you. 30 pts each.'],
+['s','操作','CONTROLS'],
+['t','十字ボタンで移動。押している間だけ進む。','The d-pad moves you while held.'],
+['t','引き返すと黄色い丸は消える（-30点）。','Backtracking erases dots (-30).'],
+['t','10秒動かないとゲームオーバー。','Standing still for 10s ends the run.'],
+['t','ポーズは押すたびに停止と解除。','The pause button toggles on and off.'],
+['t','3秒長押しで中断。停止中に右でステージスキップ。','Hold 3s to suspend. Right skips a stage (no bonus).'],
+['s','アメーバ','AMOEBAS'],
+['t','丸が30個、または15秒でピンクが出現。','Pink appears after 30 dots or 15 seconds.'],
+['t','軌跡を食べながら追ってくる。触れたら死。','It eats your trail and chases you. Contact kills.'],
+['t','紫は通路をふさぐ。時々ゆるんで通れる。','Purple ones block corridors and open at times.'],
+['t','餌を撒くとアメーバはそちらへ向かう。','A pink feed lures amoebas away from you.'],
+['t','食べ終わったピンクは速度が2倍になる。','After eating, pink moves twice as fast.'],
+['s','マンホール','MANHOLES'],
+['t','通ると蓋が開く。開いた穴に自分が落ちたら死。','Walking over one opens it. Falling in kills you.'],
+['t','動いている紫が落ちると消滅（+1000点）。','A moving purple falls in and dies (+1000).'],
+['t','ピンクが落ちると10秒潜って戻る。','Pink hides for 10 seconds, then climbs back.'],
+['s','アイテム','ITEMS'],
+['t','金貨は通貨。ツルハシ3枚、爆弾6枚。','Coins are money: pickaxe 3, bomb 6.'],
+['t','ツルハシは壁を1枚壊す（-300点）。','A pickaxe breaks one wall (-300).'],
+['t','爆弾は軌跡を導火線にして爆破する。','The bomb burns your trail as a fuse.'],
+['t','爆破は+500点、燃えた丸1つにつき+50点。','Blast +500, plus 50 for each dot burned.'],
+['t','餌は1ゲーム15個。面をまたいで持ち越す。','15 feeds per game, carried between stages.'],
+['s','少女','THE GIRL'],
+['t','牢屋でYESを選ぶと一緒に来る。','Answer YES at the cage and she follows you.'],
+['t','連れてゴールすると+3000点。','Bring her to the goal for +3000.'],
+['t','食べられるとLIFEを1つ失い、ゴール時-12000点。','Losing her costs a life and -12000 at the goal.'],
+['t','食べられている15秒間は逃げる好機。','Those 15 seconds are your chance to escape.'],
+['s','ライフ','LIFE'],
+['t','1ゲームに3つ。面をまたいで共通。','Three per game, shared across stages.'],
+['t','0になるとゲームオーバー。記録が残る。','At zero the run ends and your score is recorded.'],
+['s','得点表','SCORING'],
+['p','黄色い丸','DOT','30'],
+['p','ゴール','GOAL','200'],
+['p','タイムボーナス','TIME LEFT','0-1000'],
+['p','少女を連れてゴール','GIRL SAVED','+3000'],
+['p','少女を失う','GIRL LOST','-12000'],
+['p','紫を穴に落とす','PURPLE IN HOLE','+1000'],
+['p','爆弾でアメーバを倒す','BOMB KILL','+500'],
+['p','導火線の丸1つ','FUSE DOT','+50'],
+['p','ツルハシ使用','PICKAXE USED','-300']
+];
+function drawHelp(){
+  ctx.fillStyle='#05050c';ctx.fillRect(0,0,W,H);
+  var x=PAD+6,y=28+helpScroll,i;
+  ctx.textAlign='left';ctx.textBaseline='alphabetic';
+  for(i=0;i<HELP.length;i++){
+    var r=HELP[i];
+    if(r[0]==='h'){
+      if(y>-40&&y<H+40){
+        ctx.fillStyle='#ffd400';
+        ctx.font='700 20px "Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif';
+        ctx.fillText(r[1],x,y);
+        ctx.fillStyle='rgba(255,212,0,0.8)';
+        bt(r[2],x,y+18,2,'left',1);
+      }
+      y+=46;
+    }else if(r[0]==='s'){
+      y+=14;
+      if(y>-30&&y<H+30){
+        ctx.fillStyle='#50f0ff';
+        ctx.font='700 15px "Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif';
+        ctx.fillText('■ '+r[1],x,y);
+        ctx.fillStyle='rgba(80,240,255,0.7)';
+        bt(r[2],x+16,y+14,1,'left',1);
+      }
+      y+=30;
+    }else if(r[0]==='t'){
+      if(y>-30&&y<H+30){
+        ctx.fillStyle='#ffffff';
+        ctx.font='400 13px "Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif';
+        ctx.fillText(r[1],x,y);
+        ctx.fillStyle='rgba(255,255,255,0.55)';
+        ctx.font='400 11px ui-monospace,"SF Mono",Menlo,monospace';
+        ctx.fillText(r[2],x,y+14);
+      }
+      y+=32;
+    }else{
+      if(y>-30&&y<H+30){
+        ctx.fillStyle='#ffffff';
+        ctx.font='400 13px "Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif';
+        ctx.fillText(r[1],x,y);
+        ctx.fillStyle='rgba(255,255,255,0.5)';
+        ctx.font='400 10px ui-monospace,"SF Mono",Menlo,monospace';
+        ctx.fillText(r[2],x,y+12);
+        ctx.fillStyle='#ffd400';
+        bt(r[3],W-PAD-8,y+2,2,'right',0);
+      }
+      y+=26;
+    }
+  }
+  helpMax=Math.max(0,(y-helpScroll)-(H-90));
+  /* 下の閉じるボタン */
+  var cb=closeBtn();
+  ctx.fillStyle='rgba(5,5,12,0.9)';ctx.fillRect(0,cb.y-14,W,H-cb.y+14);
+  rrect(cb.x,cb.y,cb.w,cb.h,cb.h*0.42);
+  ctx.fillStyle='rgba(255,212,0,0.18)';ctx.fill();
+  ctx.strokeStyle='#ffd400';ctx.lineWidth=1.6;ctx.stroke();
+  ctx.fillStyle='#ffd400';
+  bt('CLOSE',cb.x+cb.w/2,cb.y+cb.h/2+7,3,'center',2);
+}
 var confetti=[];
 function makeConfetti(){
   confetti=[];
@@ -3366,6 +3508,14 @@ function drawTitle(){
     bt(String(r.y).slice(2)+two(r.m)+two(r.d),W*0.955,yy,2,'right',0);
   }
 
+  /* HOW TO PLAY */
+  var hb=howBtn();
+  rrect(hb.x,hb.y,hb.w,hb.h,hb.h*0.42);
+  ctx.fillStyle='rgba(80,240,255,0.10)';ctx.fill();
+  ctx.strokeStyle='rgba(80,240,255,0.8)';ctx.lineWidth=1.4;ctx.stroke();
+  ctx.fillStyle='#50f0ff';
+  bt('HOW TO PLAY',hb.x+hb.w/2,hb.y+hb.h/2+6,2,'center',1);
+
   /* START */
   var sb=startBtn(),pul=0.5+0.5*Math.sin(now*0.005);
   rrect(sb.x,sb.y,sb.w,sb.h,sb.h*0.42);
@@ -3378,6 +3528,7 @@ function drawTitle(){
 /* ================= ループ ================= */
 function loop(ts){
   now=ts;dt=Math.min(50,ts-prev||16);prev=ts;
+  if(state==='help'){drawHelp();requestAnimationFrame(loop);return;}
   if(state==='title'){drawTitle();requestAnimationFrame(loop);return;}
   if(state==='opening'){update();drawOpening();requestAnimationFrame(loop);return;}
   update();
