@@ -1103,7 +1103,7 @@ function explode(){
   if(burned){
     score+=burned*DOT_PT;                       // ゴールと同じ、丸そのものの点
     score+=burned*FUSE_PT;                      // 導火線ボーナス
-    pop(a.x,a.y-cell*1.1,'DOTS '+burned+' +'+(burned*DOT_PT),'#ffd400');
+    pop(a.x,a.y-cell*1.1,'TRAJECTORY '+burned+' +'+(burned*DOT_PT),'#ffd400');
     pop(a.x,a.y-cell*1.9,'FUSE +'+(burned*FUSE_PT),'#ff9a3c');
   }
   if(girl.state==='eating'&&!girl.eater){      // 食事中を吹き飛ばせば少女は助かる
@@ -1389,7 +1389,7 @@ function caught(msg,eater){
     setTimeout(function(){beep(1500,0.2,0.05,'square');},130);
     if(lives<=0){
       canRetry=false;overScore=score;total+=score;score=0;
-      state='over';overMsg='少女が食べられた';endT=now;held=null;aiming=false;
+      state='over';overMsg='ワトナーが食べられた';endT=now;held=null;aiming=false;
       failSfx();
     }
     return;
@@ -1411,7 +1411,7 @@ function sync(){
   // 追跡アメーバ
   if(amoebaOn){
     var a=amoebaPos();
-    if(a&&aMode!=='girl'&&aMode!=='hole'&&Math.hypot(px-a.x,py-a.y)<cell*0.45){caught('アメーバに触れた',null);return;}
+    if(a&&aMode!=='girl'&&aMode!=='hole'&&Math.hypot(px-a.x,py-a.y)<cell*0.45){caught('ヌメリンに触れた',null);return;}
   }
   // 待ち伏せアメーバ
   for(var i=0;i<blockers.length;i++){
@@ -1420,7 +1420,7 @@ function sync(){
     if(b.mode!=='idle'&&b.mode!=='wander'&&b.mode!=='go') continue;
     if(b.mode==='idle'&&blockerOpen(b)>=0.55) continue;
     var bc=blockerPos(b);
-    if(Math.hypot(px-bc.x,py-bc.y)<cell*0.31){caught('待ち伏せアメーバに捕まった',b);return;}
+    if(Math.hypot(px-bc.x,py-bc.y)<cell*0.31){caught('待機ヌメリンに捕まった',b);return;}
   }
   for(var ci=0;ci<coins.length;ci++){
     var co=coins[ci];
@@ -1840,7 +1840,7 @@ function update(){
     }
     if(now-tallyT>=TALLY_MS&&!tallyDone){
       tallyDone=now;
-      pop(px,py-cell*0.9,'DOTS +'+(tallyN*DOT_PT),'#ffd400');
+      pop(px,py-cell*0.9,'TRAJECTORY +'+(tallyN*DOT_PT),'#ffd400');
       beep(1046,0.09,0.05,'triangle');
       setTimeout(function(){beep(1568,0.16,0.05,'triangle');},110);
     }
@@ -1910,7 +1910,7 @@ function update(){
         if(amoeba>=dots.length-1){
           amoeba=Math.max(0,dots.length-1);
           var ap=amoebaPos();
-          if(ap&&Math.hypot(px-ap.x,py-ap.y)<cell*0.55) caught('アメーバに食べられた',null);
+          if(ap&&Math.hypot(px-ap.x,py-ap.y)<cell*0.55) caught('ヌメリンに食べられた',null);
           else startBack();
         }
       }else if(aMode==='hole'){
@@ -3009,8 +3009,8 @@ function drawPad(){
 
   /* ツルハシ／餌：角丸の横長ボタン（縦1：横5） */
   drawPill(pickBtn,'PICKAXE',picks,PICK_C,aiming,(picks>0||canBuy('pick')),'pick');
-  drawPill(lureBtn,'FEED',lureStock,LURE_C,lurePressed&&lureStock>0,(lureStock>0),'feed');
-  drawPill(bombBtn,'BOMB',hasBomb?1:0,BOMB_C,!!fuse,(hasBomb||canBuy('bomb')),'bomb');
+  drawPill(lureBtn,'82HASHI',lureStock,LURE_C,lurePressed&&lureStock>0,(lureStock>0),'feed');
+  drawPill(bombBtn,'M-BOMB',hasBomb?1:0,BOMB_C,!!fuse,(hasBomb||canBuy('bomb')),'bomb');
   drawPill(coinBtn,'COIN',wallet,'#f2b705',coinPressed,(wallet>0),'coin');
 }
 function drawPill(b,label,count,icon,on,act,kind){
@@ -3091,12 +3091,12 @@ function drawHUD(){
     if(!amoebaOn&&respawnAt){
       var rs=Math.ceil((respawnAt-now)/1000);
       ctx.fillStyle='#ffb04d';
-      bt(rs>0?('AMB DOWN '+rs):'AMB COMING',W-pad,yy,2,'right',0);
+      bt(rs>0?('NUME DOWN '+rs):'NUME COMING',W-pad,yy,2,'right',0);
     }else if(!amoebaOn){
       var left=Math.max(0,TRIGGER-(dots.length-1));
       var secs=Math.max(0,Math.ceil((AMOEBA_TIME-(now-playT))/1000));
       ctx.fillStyle=(left<=5||secs<=5)?'#ff6b8f':'rgba(255,255,255,0.75)';
-      bt('AMB '+left+'/'+secs,W-pad,yy,2,'right',0);
+      bt('NUME '+left+'/'+secs,W-pad,yy,2,'right',0);
     }else{
       var gap=dots.length-1-amoeba;
       ctx.fillStyle=gap<8?'#ff6b8f':'rgba(255,140,170,0.85)';
@@ -3107,32 +3107,40 @@ function drawHUD(){
 var helpScroll=0,helpDragY=null,helpMax=0;
 var HELP=[
 ['h','遊び方','HOW TO PLAY'],
+['s','登場するもの','CHARACTERS'],
+['t','ラウスケン：あなた。迷宮を走る少年。','LYAUSKEN: you, the boy running the labyrinth.'],
+['t','ワトナー：牢屋にとらわれた少女。','WATONER: the girl locked in the cage.'],
+['t','ヌメリン：桃色の追跡者。キセキを食べて迫る。','NUMELIN: the pink chaser that eats your trajectory.'],
+['t','待機ヌメリン：紫。通路をふさいで待ち構える。','WAITING NUMELIN: purple, it blocks corridors.'],
+['t','キセキ：歩いた跡に残る黄色い丸。1つ30点。','TRAJECTORY: the yellow dots you leave. 30 pts each.'],
 ['s','目的','GOAL'],
 ['t','信号のスタートから、ゴールの旗を目指す。','Start at the signal, reach the goal flag.'],
-['t','通った跡に黄色い丸が残る。1つ30点。','A yellow dot is left behind you. 30 pts each.'],
+['t','ゴールすると、残したキセキの数が加算される。','At the goal your trajectory is counted up.'],
 ['s','操作','CONTROLS'],
 ['t','十字ボタンで移動。押している間だけ進む。','The d-pad moves you while held.'],
-['t','引き返すと黄色い丸は消える（-30点）。','Backtracking erases dots (-30).'],
+['t','引き返すとキセキは消える（-30点）。','Backtracking erases trajectory (-30).'],
 ['t','10秒動かないとゲームオーバー。','Standing still for 10s ends the run.'],
+['t','ワープの出口では一度停止する。押し直して進む。','After a warp you stop; press again to move.'],
 ['t','ポーズは押すたびに停止と解除。','The pause button toggles on and off.'],
 ['t','3秒長押しで中断。停止中に右でステージスキップ。','Hold 3s to suspend. Right skips a stage (no bonus).'],
-['s','アメーバ','AMOEBAS'],
-['t','丸が30個、または15秒でピンクが出現。','Pink appears after 30 dots or 15 seconds.'],
-['t','軌跡を食べながら追ってくる。触れたら死。','It eats your trail and chases you. Contact kills.'],
-['t','紫は通路をふさぐ。時々ゆるんで通れる。','Purple ones block corridors and open at times.'],
-['t','餌を撒くとアメーバはそちらへ向かう。','A pink feed lures amoebas away from you.'],
-['t','食べ終わったピンクは速度が2倍になる。','After eating, pink moves twice as fast.'],
+['s','ヌメリン','NUMELIN'],
+['t','キセキ30個、または15秒でヌメリンが現れる。','NUMELIN appears after 30 dots or 15 seconds.'],
+['t','キセキを食べながら追う。触れたらゲームオーバー。','It eats your trajectory and chases you. Contact kills.'],
+['t','待機ヌメリンは通路をふさぐ。時々ゆるむ。','WAITING NUMELIN blocks corridors and opens at times.'],
+['t','ヤツハシを撒くと、どちらもそちらへ急ぐ。','A YATSUHASHI (82HASHI) lures both kinds away.'],
+['t','食べ終わったヌメリンは速度が2倍になる。','After eating, NUMELIN moves twice as fast.'],
 ['s','マンホール','MANHOLES'],
-['t','通ると蓋が開く。開いた穴に自分が落ちたら死。','Walking over one opens it. Falling in kills you.'],
-['t','動いている紫が落ちると消滅（+1000点）。','A moving purple falls in and dies (+1000).'],
-['t','ピンクが落ちると10秒潜って戻る。','Pink hides for 10 seconds, then climbs back.'],
-['s','アイテム','ITEMS'],
-['t','金貨は通貨。ツルハシ3枚、爆弾6枚。','Coins are money: pickaxe 3, bomb 6.'],
+['t','通ると蓋が開く。自分が落ちたらゲームオーバー。','Walking over one opens it. Falling in kills you.'],
+['t','動いている待機ヌメリンが落ちると消滅（+1000点）。','A moving WAITING NUMELIN falls in and dies (+1000).'],
+['t','ヌメリンが落ちると10秒潜って戻ってくる。','NUMELIN hides for 10 seconds, then climbs back.'],
+['s','道具','ITEMS'],
+['t','金貨は通貨。ツルハシ3枚、キセキの爆弾6枚。','Coins are money: PICKAXE 3, M-BOMB 6.'],
 ['t','ツルハシは壁を1枚壊す（-300点）。','A pickaxe breaks one wall (-300).'],
-['t','爆弾は軌跡を導火線にして爆破する。','The bomb burns your trail as a fuse.'],
-['t','爆破は+500点、燃えた丸1つにつき+50点。','Blast +500, plus 50 for each dot burned.'],
-['t','餌は1ゲーム15個。面をまたいで持ち越す。','15 feeds per game, carried between stages.'],
-['s','少女','THE GIRL'],
+['t','キセキの爆弾（M-BOMB）はキセキを導火線に爆破する。','M-BOMB burns your trajectory as a fuse.'],
+['t','撃破+500点、燃えたキセキ1つに30点と50点。','Kill +500, each burned dot gives 30 and 50.'],
+['t','倒したヌメリンは60秒後、キセキの最後尾に戻る。','NUMELIN returns after 60s at the tail of your trail.'],
+['t','ヤツハシ（82HASHI）は1ゲーム15個。持ち越せる。','15 YATSUHASHI (82HASHI) per game, carried over.'],
+['s','ワトナー','WATONER'],
 ['t','牢屋でYESを選ぶと一緒に来る。','Answer YES at the cage and she follows you.'],
 ['t','連れてゴールすると+3000点。','Bring her to the goal for +3000.'],
 ['t','食べられるとLIFEを1つ失い、ゴール時-12000点。','Losing her costs a life and -12000 at the goal.'],
@@ -3141,14 +3149,14 @@ var HELP=[
 ['t','1ゲームに3つ。面をまたいで共通。','Three per game, shared across stages.'],
 ['t','0になるとゲームオーバー。記録が残る。','At zero the run ends and your score is recorded.'],
 ['s','得点表','SCORING'],
-['p','黄色い丸','DOT','30'],
+['p','キセキ','TRAJECTORY','30'],
 ['p','ゴール','GOAL','200'],
 ['p','タイムボーナス','TIME LEFT','0-1000'],
-['p','少女を連れてゴール','GIRL SAVED','+3000'],
-['p','少女を失う','GIRL LOST','-12000'],
-['p','紫を穴に落とす','PURPLE IN HOLE','+1000'],
-['p','爆弾でアメーバを倒す','BOMB KILL','+500'],
-['p','導火線の丸1つ','FUSE DOT','+50'],
+['p','ワトナーを連れてゴール','WATONER SAVED','+3000'],
+['p','ワトナーを失う','WATONER LOST','-12000'],
+['p','待機ヌメリンを穴に落とす','NUMELIN IN HOLE','+1000'],
+['p','爆弾でヌメリンを倒す','BOMB KILL','+500'],
+['p','燃えたキセキ1つ','FUSE DOT','+80'],
 ['p','ツルハシ使用','PICKAXE USED','-300']
 ];
 function drawHelp(){
@@ -3358,7 +3366,7 @@ function drawOverlay(){
   if(state==='buy'){
     var q=(buyKind==='pick')
       ? ('BUY PICKAXE FOR '+PICK_COST_COIN+' COINS?')
-      : ('BUY BOMB FOR '+BOMB_COST_COIN+' COINS?');
+      : ('BUY M-BOMB FOR '+BOMB_COST_COIN+' COINS?');
     ctx.fillStyle='#ffffff';
     bt(q,W/2,oy+ROWS*cell*0.36+14,2,'center',1);
     ctx.fillStyle='#f2b705';
@@ -3377,7 +3385,7 @@ function drawOverlay(){
     ctx.fillStyle='#f2b705';
     bt('COIN '+wallet,W/2,oy+ROWS*cell*0.36-34,3,'center',2);
     var sh=shopBtns();
-    [['pick','PICKAXE',PICK_COST_COIN,PICK_C],['bomb','BOMB',BOMB_COST_COIN,BOMB_C]].forEach(function(o){
+    [['pick','PICKAXE',PICK_COST_COIN,PICK_C],['bomb','M-BOMB',BOMB_COST_COIN,BOMB_C]].forEach(function(o){
       var b=sh[o[0]],ok=canBuy(o[0]);
       ctx.globalAlpha=ok?1:0.35;
       rrect(b.x,b.y,b.w,b.h,b.h*0.42);
@@ -3414,9 +3422,9 @@ function drawOverlay(){
     });
   }
   if(state==='clear'){
-    var ln=['DOTS +'+clearDots,'GOAL +'+GOAL_PT,'TIME +'+tBonus];
-    if(girlPen)ln.push('GIRL -'+girlPen);
-    else if(GIRL_BONUS&&girl.state==='follow')ln.push('GIRL +'+GIRL_BONUS);
+    var ln=['TRAJECTORY +'+clearDots,'GOAL +'+GOAL_PT,'TIME +'+tBonus];
+    if(girlPen)ln.push('WATONER -'+girlPen);
+    else if(GIRL_BONUS&&girl.state==='follow')ln.push('WATONER +'+GIRL_BONUS);
     ln.push('TOTAL '+total);
     panel(ln,'STAGE CLEAR',true,(girl.state==='follow')?'girl':'solo');
   }
