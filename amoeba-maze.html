@@ -546,6 +546,34 @@ function pixelText(txt,x,y,scale,align,color,stretch){
   }
 }
 /* ---- ランキング ---- */
+var SAVE_KEY='amoebamaze_save',saveInfo=null;
+function saveGame(){
+  try{
+    window.localStorage.setItem(SAVE_KEY,JSON.stringify({
+      v:1,stage:stage,total:total,lives:lives,wallet:wallet,
+      lure:lureStock,n:playerName,t:Date.now()
+    }));
+  }catch(e){}
+}
+function readSave(){
+  try{
+    var j=JSON.parse(window.localStorage.getItem(SAVE_KEY));
+    if(j&&j.v===1&&j.stage>=1&&j.lives>0)return j;
+  }catch(e){}
+  return null;
+}
+function clearSave(){try{window.localStorage.removeItem(SAVE_KEY);}catch(e){}}
+function continueGame(){
+  var j=saveInfo;
+  if(!j)return;
+  stage=j.stage;total=j.total||0;lives=j.lives||LIVES;
+  wallet=j.wallet||0;
+  lureStock=(j.lure===undefined)?LURE_MAX:j.lure;
+  if(!playerName&&j.n)playerName=j.n;
+  canRetry=false;
+  newStage();
+  placeNameInput();
+}
 function loadRanks(){
   try{var v=window.localStorage.getItem('amoebamaze_ranks');if(v)return JSON.parse(v)||[];}catch(e){}
   return [];
@@ -579,7 +607,9 @@ function makeNameInput(){
 }
 function nameBox(){return {x:W*0.055,y:H*0.515,w:W*0.56,h:Math.max(30,H*0.050)};}
 function startBtn(){var w=W*0.46,h=Math.max(34,H*0.055);return {x:(W-w)/2,y:H*0.925,w:w,h:h};}
-function howBtn(){var w=W*0.52,h=Math.max(28,H*0.042);return {x:(W-w)/2,y:H*0.855,w:w,h:h};}
+function howBtn(){var w=W*0.52,h=Math.max(28,H*0.042);
+  return {x:(W-w)/2,y:(saveInfo?H*0.775:H*0.855),w:w,h:h};}
+function contBtn(){var w=W*0.56,h=Math.max(32,H*0.050);return {x:(W-w)/2,y:H*0.858,w:w,h:h};}
 function closeBtn(){var w=W*0.44,h=Math.max(32,H*0.05);return {x:(W-w)/2,y:H-h-14,w:w,h:h};}
 function placeNameInput(){
   if(!nameInput)return;
@@ -1186,6 +1216,7 @@ function newStage(){
   score=0;tBonus=TIME_MAX;
   placeBlockers();
   state='ready';readyT=now;
+  saveGame();saveInfo=readSave();
   if(!skipBell)bellSfx();
 }
 function startGame(){
@@ -1201,6 +1232,8 @@ function endOpening(){
   bellSfx();
 }
 function toTitle(){
+  if(lives<=0)clearSave();
+  saveInfo=readSave();
   state='title';stage=1;setPalette(true);layout();placeNameInput();
 }
 function startPlay(){
@@ -1674,7 +1707,7 @@ function readTouches(e){
     if(state==='playing')enterPause();
     else if(state==='pause'||state==='halt')resumeFromAsk();   // もう一度押すと解除
   }
-  if(ps&&state==='pause'&&now-pauseDownT>=3000){state='halt';beep(180,0.2,0.05,'sawtooth');}
+  if(ps&&state==='pause'&&now-pauseDownT>=3000){state='halt';saveGame();saveInfo=readSave();beep(180,0.2,0.05,'sawtooth');}
   pausePressed=ps;
   if(state==='pause'&&d==='e'&&!dirPressed){dirPressed=true;skipStage();return;}
   if(bb&&!bombPressed)useBomb();
@@ -1700,6 +1733,11 @@ function tap(x,y){
   if(state==='title'){
     if(x===undefined)return;
     var sb=startBtn(),hb=howBtn();
+    if(saveInfo&&inBox(contBtn(),x,y,8)){
+      beep(660,0.08,0.05,'triangle');
+      setTimeout(function(){beep(990,0.14,0.05,'triangle');},90);
+      continueGame();return;
+    }
     if(inBox(hb,x,y,8)){beep(760,0.09,0.05,'triangle');state='help';helpScroll=0;placeNameInput();return;}
     if(inBox(sb,x,y,8)){beep(880,0.09,0.05,'triangle');startGame();}
     return;
@@ -3145,6 +3183,11 @@ var HELP=[
 ['t','連れてゴールすると+3000点。','Bring her to the goal for +3000.'],
 ['t','食べられるとLIFEを1つ失い、ゴール時-12000点。','Losing her costs a life and -12000 at the goal.'],
 ['t','食べられている15秒間は逃げる好機。','Those 15 seconds are your chance to escape.'],
+['s','中断と再開','SAVE & CONTINUE'],
+['t','面が始まるたびに自動で保存される。','Progress is saved at the start of every stage.'],
+['t','トップ画面のCONTINUEでその面から再開。','CONTINUE on the title resumes from that stage.'],
+['t','得点・ライフ・金貨・ヤツハシも引き継ぐ。','Score, life, coins and 82HASHI are restored.'],
+['t','ライフが尽きると保存は消える。','The save is cleared when your last life is gone.'],
 ['s','ライフ','LIFE'],
 ['t','1ゲームに3つ。面をまたいで共通。','Three per game, shared across stages.'],
 ['t','0になるとゲームオーバー。記録が残る。','At zero the run ends and your score is recorded.'],
@@ -3516,6 +3559,18 @@ function drawTitle(){
     bt(String(r.y).slice(2)+two(r.m)+two(r.d),W*0.955,yy,2,'right',0);
   }
 
+  /* CONTINUE（保存があるときだけ） */
+  if(saveInfo){
+    var cb2=contBtn(),cp=0.5+0.5*Math.sin(now*0.004);
+    rrect(cb2.x,cb2.y,cb2.w,cb2.h,cb2.h*0.42);
+    ctx.fillStyle='rgba(60,255,136,'+(0.12+0.10*cp)+')';ctx.fill();
+    ctx.strokeStyle='rgba(60,255,136,'+(0.7+0.3*cp)+')';ctx.lineWidth=1.6;ctx.stroke();
+    ctx.fillStyle='#3cff88';
+    bt('CONTINUE '+two(saveInfo.stage),cb2.x+cb2.w/2,cb2.y+cb2.h/2+7,2,'center',1);
+    ctx.fillStyle='rgba(60,255,136,0.7)';
+    bt('SCORE '+(saveInfo.total||0)+'  LIFE '+(saveInfo.lives||0),W/2,cb2.y+cb2.h+13,1,'center',1);
+  }
+
   /* HOW TO PLAY */
   var hb=howBtn();
   rrect(hb.x,hb.y,hb.w,hb.h,hb.h*0.42);
@@ -3546,7 +3601,7 @@ function loop(ts){
   drawPops();drawPad();drawPauseBtn();drawHUD();drawOverlay();
   requestAnimationFrame(loop);
 }
-ranks=loadRanks();
+ranks=loadRanks();saveInfo=readSave();
 makeNameInput();
 resize();
 placeNameInput();
