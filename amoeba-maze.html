@@ -93,7 +93,7 @@ var SPAWN_MIN_CELLS=3;   // 軌跡の最後尾とプレイヤーの最低距離�
 var VIEW_BASE=10;        // 1面のマップ確認時間(秒)
 var VIEW_STEP=5;         // 1面ごとの増加(秒)
 var VIEW_MAX=30;         // 確認時間の上限(秒)
-var DOT_PT=30, GOAL_PT=200, TIME_MAX=1000, TIME_DEC=10;
+var DOT_PT=30, GOAL_PT=2500, TIME_MAX=1000, TIME_DEC=10;
 var GIRL_EAT=15000;      // 少女が食べられている時間(ms)
 var GIRL_PENALTY=12000;  // 少女を失った状態でゴールした時の減点
 var GIRL_BONUS=3000;     // 少女を連れてゴールした時の加点
@@ -132,7 +132,8 @@ var PAD_ON='#EDE939';       // PANTONE 394 C（押している時）
 var BOY_SHIRT='#ffdd33',BOY_OVER='#2b53c8',BOY_CAP='#7a4a1e',BOY_HAIR='#4a2f18',SKIN='#f7c9a0';
 var BOY_SHOE='#2ea84f';     // 靴
 var GIRL_DRESS='#ff8ac0',GIRL_HAIR='#43291a',dressOv=null,hairOv=0;
-var IDOL_N=7;              // 救出した人数がこの倍数になるとステージが開く
+var IDOL_N=7;              // 最初にステージが開く人数
+var IDOL_STEP=5;           // 以降、この人数ごとにメンバーが増える
 var IDOL_MS=15000;         // 歌と踊りの長さ(ms)
 var INTRO_MS=3000;         // 曲が始まってから照明が上がるまで(ms)
 var HEART_MS=1700;         // ハートが飛んでくる時間(ms)
@@ -186,7 +187,8 @@ var COLS=11,ROWS=15,cell=20,ox=0,oy=0,padTop=0,padH=0,bs=40,dpad={},lureBtn={},p
 var wallet=0,coinPressed=false,buyKind='';
 var pops=[],pauseBtn={},pauseDownT=0,pausePressed=false;
 var tallyT=0,tallyFrom=0,tallyN=0,tallyDone=0,tallyTick=0,tallyLast=-1,girlCheerT=0;
-var savedGirls=0,idolT=0,introT=0,musicT=0,heartT=0,heartGot=0,idolSlots=[],idolAnim=[],idolSwapT=0,idolBonus=0,idolDemo=false;
+var savedGirls=0,idolNext=IDOL_N,idolShow=0,idolN=IDOL_N,idolRowsCache=null;
+var idolT=0,introT=0,musicT=0,heartT=0,heartGot=0,idolSlots=[],idolAnim=[],idolSwapT=0,idolBonus=0,idolDemo=false;
 function pop(x,y,txt,col){pops.push({x:x,y:y,t:now,txt:txt,c:col||'#ffd400'});}
 var grid=[],start={r:0,c:0},goal={r:0,c:0};
 var state='title';
@@ -457,12 +459,12 @@ function failSfx(){
     src.start(t0+st+dur*0.78);
   }catch(e){}
 }
-/* アイドルの歌（ユーロビート調・約15秒） */
+/* ステージの曲。回を追うごとに ユーロビート → ブラックミュージック → テクノロック と変わる */
 var idolRetry=0;
 function idolMusic(){
   if(musicOn)return;
   if(!audioInit())return;
-  if(ac.state!=='running'){                 // resumeは非同期。rungingになるまで待つ
+  if(ac.state!=='running'){
     try{
       var pr=ac.resume();
       if(pr&&pr.then)pr.then(function(){if(state==='idol')idolMusic();});
@@ -474,96 +476,193 @@ function idolMusic(){
   musicStop();
   try{
     var t0=ac.currentTime+0.05;
-    var BPM=156,B=60/BPM,S16=B/4;            // 16分音符
     musicGain=ac.createGain();musicGain.gain.value=1;musicGain.connect(mg);musicOn=true;
-    /* ノイズは1つ作って使い回す */
-    var nlen=Math.floor(ac.sampleRate*0.2),nbuf=ac.createBuffer(1,nlen,ac.sampleRate),nd=nbuf.getChannelData(0);
+    if(state==='idol')musicT=now;
+    var nlen=Math.floor(ac.sampleRate*0.25),nbuf=ac.createBuffer(1,nlen,ac.sampleRate),nd=nbuf.getChannelData(0);
     for(var q=0;q<nlen;q++)nd[q]=Math.random()*2-1;
-    function noise(st,dur,vol,hz,type){
-      var src=ac.createBufferSource();src.buffer=nbuf;
-      var f=ac.createBiquadFilter();f.type=type||'highpass';f.frequency.value=hz;
-      var g=ac.createGain();
-      g.gain.setValueAtTime(vol,t0+st);
-      g.gain.exponentialRampToValueAtTime(0.0001,t0+st+dur);
-      src.connect(f);f.connect(g);g.connect(musicGain);
-      src.start(t0+st);src.stop(t0+st+dur+0.02);
-    }
-    function pad(type,f,st,dur,vol){        // 伸ばして終わる音
-      var o=ac.createOscillator(),g=ac.createGain();
-      o.type=type;o.frequency.setValueAtTime(f,t0+st);
-      g.gain.setValueAtTime(0.0001,t0+st);
-      g.gain.exponentialRampToValueAtTime(vol,t0+st+0.06);
-      g.gain.setValueAtTime(vol,t0+st+dur*0.40);
-      g.gain.exponentialRampToValueAtTime(0.0001,t0+st+dur);
-      o.connect(g);g.connect(musicGain);
-      o.start(t0+st);o.stop(t0+st+dur+0.05);
-    }
-    function tone(type,f,st,dur,vol,f2){
-      var o=ac.createOscillator(),g=ac.createGain();
-      o.type=type;o.frequency.setValueAtTime(f,t0+st);
-      if(f2)o.frequency.exponentialRampToValueAtTime(f2,t0+st+dur);
-      g.gain.setValueAtTime(0.0001,t0+st);
-      g.gain.exponentialRampToValueAtTime(vol,t0+st+0.008);
-      g.gain.exponentialRampToValueAtTime(0.0001,t0+st+dur);
-      o.connect(g);g.connect(musicGain);
-      o.start(t0+st);o.stop(t0+st+dur+0.02);
-    }
-    if(state==='idol')musicT=now;                 // 実際に鳴り始めた時刻
-    /* Am - F - G - Am / Am - F - G - E  のイ短調進行 */
-    var roots=[110.00,87.31,98.00,110.00,110.00,87.31,98.00,82.41];
-    var third=[130.81,110.00,123.47,130.81,130.81,110.00,123.47,103.83];
-    var fifth=[164.81,130.81,146.83,164.81,164.81,130.81,146.83,123.47];
-    var A=[440.00,493.88,523.25,587.33,659.25,698.46,783.99,880.00];  // イ短調
-    var hook=[4,4,2,4,6,6,4,-1, 5,4,2,0,2,2,-1,-1];
-    var bars=8,i2,b2;
-    for(b2=0;b2<bars;b2++){
-      var bt0=b2*4*B;
-      /* 四つ打ちのキック */
-      for(i2=0;i2<4;i2++){
-        tone('sine',150,bt0+i2*B,0.13,0.34,48);
-        noise(bt0+i2*B,0.05,0.10,120,'lowpass');
+    var V={
+      noise:function(st,dur,vol,hz,type,Q){
+        var src=ac.createBufferSource();src.buffer=nbuf;
+        var f=ac.createBiquadFilter();f.type=type||'highpass';f.frequency.value=hz;
+        if(Q)f.Q.value=Q;
+        var g=ac.createGain();
+        g.gain.setValueAtTime(vol,t0+st);
+        g.gain.exponentialRampToValueAtTime(0.0001,t0+st+dur);
+        src.connect(f);f.connect(g);g.connect(musicGain);
+        src.start(t0+st);src.stop(t0+st+dur+0.02);
+      },
+      tone:function(type,f,st,dur,vol,f2){
+        if(!f)return;
+        var o=ac.createOscillator(),g=ac.createGain();
+        o.type=type;o.frequency.setValueAtTime(f,t0+st);
+        if(f2)o.frequency.exponentialRampToValueAtTime(f2,t0+st+dur);
+        g.gain.setValueAtTime(0.0001,t0+st);
+        g.gain.exponentialRampToValueAtTime(vol,t0+st+0.008);
+        g.gain.exponentialRampToValueAtTime(0.0001,t0+st+dur);
+        o.connect(g);g.connect(musicGain);
+        o.start(t0+st);o.stop(t0+st+dur+0.02);
+      },
+      pad:function(type,f,st,dur,vol){
+        var o=ac.createOscillator(),g=ac.createGain();
+        o.type=type;o.frequency.setValueAtTime(f,t0+st);
+        g.gain.setValueAtTime(0.0001,t0+st);
+        g.gain.exponentialRampToValueAtTime(vol,t0+st+0.06);
+        g.gain.setValueAtTime(vol,t0+st+dur*0.40);
+        g.gain.exponentialRampToValueAtTime(0.0001,t0+st+dur);
+        o.connect(g);g.connect(musicGain);
+        o.start(t0+st);o.stop(t0+st+dur+0.05);
       }
-      /* 裏拍のハイハット */
-      for(i2=0;i2<8;i2++) noise(bt0+i2*B/2+B/4,0.035,(i2%2)?0.05:0.035,7000);
-      /* 走るベース（8分＋16分の跳ね） */
-      for(i2=0;i2<8;i2++){
-        var st=bt0+i2*B/2;
-        tone('sawtooth',roots[b2],st,B*0.30,0.13);
-        if(i2%2===1) tone('sawtooth',roots[b2]*2,st+B*0.25,B*0.16,0.07);
-      }
-      /* 16分のアルペジオ（最後の小節は後半で止めて溜める） */
-      var arp=[roots[b2]*2,third[b2]*2,fifth[b2]*2,roots[b2]*4];
-      var arpN=(b2===bars-1)?12:16;
-      for(i2=0;i2<arpN;i2++)
-        tone('square',arp[i2%4],bt0+i2*S16,S16*0.85,0.035);
-      /* 最後の小節の終わりにドラムのフィル */
-      if(b2===bars-1)
-        for(i2=12;i2<16;i2++) noise(bt0+i2*S16,0.07,0.09+(i2-12)*0.02,2500);
-      /* フック（後半の小節で歌う） */
-      if(b2>=2){
-        for(i2=0;i2<16;i2++){
-          var hn=hook[i2];
-          if(hn>=0){
-            var f0=A[hn]*(b2>=6?2:1);
-            tone('square',f0,bt0+i2*S16,S16*1.6,0.075);
-            tone('triangle',f0/2,bt0+i2*S16,S16*1.4,0.035);
-          }
+    };
+    var kind=idolShow%3;
+    if(kind===1)grooveTrack(V);
+    else if(kind===2)technoTrack(V);
+    else euroTrack(V);
+  }catch(e){}
+}
+/* 1曲目：ユーロビート（BPM156・イ短調） */
+function euroTrack(V){
+  var BPM=156,B=60/BPM,S16=B/4;
+  var roots=[110.00,87.31,98.00,110.00,110.00,87.31,98.00,82.41];
+  var third=[130.81,110.00,123.47,130.81,130.81,110.00,123.47,103.83];
+  var fifth=[164.81,130.81,146.83,164.81,164.81,130.81,146.83,123.47];
+  var A=[440.00,493.88,523.25,587.33,659.25,698.46,783.99,880.00];
+  var hook=[4,4,2,4,6,6,4,-1, 5,4,2,0,2,2,-1,-1];
+  var bars=8,i2,b2;
+  for(b2=0;b2<bars;b2++){
+    var bt0=b2*4*B;
+    for(i2=0;i2<4;i2++){
+      V.tone('sine',150,bt0+i2*B,0.13,0.34,48);
+      V.noise(bt0+i2*B,0.05,0.10,120,'lowpass');
+    }
+    for(i2=0;i2<8;i2++) V.noise(bt0+i2*B/2+B/4,0.035,(i2%2)?0.05:0.035,7000);
+    for(i2=0;i2<8;i2++){
+      var st=bt0+i2*B/2;
+      V.tone('sawtooth',roots[b2],st,B*0.30,0.13);
+      if(i2%2===1) V.tone('sawtooth',roots[b2]*2,st+B*0.25,B*0.16,0.07);
+    }
+    var arp=[roots[b2]*2,third[b2]*2,fifth[b2]*2,roots[b2]*4];
+    var arpN=(b2===bars-1)?12:16;
+    for(i2=0;i2<arpN;i2++) V.tone('square',arp[i2%4],bt0+i2*S16,S16*0.85,0.035);
+    if(b2===bars-1) for(i2=12;i2<16;i2++) V.noise(bt0+i2*S16,0.07,0.09+(i2-12)*0.02,2500);
+    if(b2>=2){
+      for(i2=0;i2<16;i2++){
+        var hn=hook[i2];
+        if(hn>=0){
+          var f0=A[hn]*(b2>=6?2:1);
+          V.tone('square',f0,bt0+i2*S16,S16*1.6,0.075);
+          V.tone('triangle',f0/2,bt0+i2*S16,S16*1.4,0.035);
         }
       }
-      /* 小節終わりのクラッシュ */
-      if(b2%4===0) noise(bt0,0.5,0.09,4000);
     }
-    /* 締め：イ短調の和音を伸ばして終わる */
-    var endT=bars*4*B,ED=2.6;
-    pad('sawtooth',110.00,endT,ED,0.10);          // A2
-    pad('sawtooth',164.81,endT,ED,0.07);          // E3
-    pad('square', 261.63,endT,ED,0.055);          // C4
-    pad('square', 440.00,endT,ED,0.075);          // A4
-    pad('triangle',880.00,endT,ED*0.8,0.05);      // A5
-    tone('sine',150,endT,0.22,0.34,48);           // 最後のキック
-    noise(endT,1.9,0.11,3000);                    // クラッシュ
-    noise(endT,0.9,0.05,300,'lowpass');
-  }catch(e){}
+    if(b2%4===0) V.noise(bt0,0.5,0.09,4000);
+  }
+  var endT=bars*4*B,ED=2.6;
+  V.pad('sawtooth',110.00,endT,ED,0.10);
+  V.pad('sawtooth',164.81,endT,ED,0.07);
+  V.pad('square', 261.63,endT,ED,0.055);
+  V.pad('square', 440.00,endT,ED,0.075);
+  V.pad('triangle',880.00,endT,ED*0.8,0.05);
+  V.tone('sine',150,endT,0.22,0.34,48);
+  V.noise(endT,1.9,0.11,3000);
+  V.noise(endT,0.9,0.05,300,'lowpass');
+}
+/* 2曲目：ブラックミュージック風のグルーヴ（BPM104・跳ねる16分） */
+function grooveTrack(V){
+  var BPM=104,B=60/BPM,S16=B/4,SW=S16*0.22;   // SW=はねる分のずれ
+  function sw(i){return i*S16+((i%2)?SW:0);}  // 裏の16分を後ろへ
+  var bars=6,i2,b2;
+  /* Dm7 - G7 - Cmaj7 - A7 の循環 */
+  var bassPat=[
+    [0,3,5,7,10,7,5,3],   // 度数（半音）
+    [0,3,5,7,10,7,5,3],
+    [0,4,7,10,7,4,0,-2],
+    [0,3,7,10,7,3,0,-2]
+  ];
+  var rootHz=[73.42,98.00,65.41,110.00];       // D2 G2 C2 A2
+  var chord=[[293.66,349.23,440.00],[293.66,349.23,392.00],
+             [329.63,392.00,493.88],[277.18,329.63,440.00]];
+  var mel=[[7,5,3,0,-2,0,3,5],[10,7,5,3,5,7,10,12]];
+  for(b2=0;b2<bars;b2++){
+    var bt0=b2*4*B,ci=b2%4;
+    /* ドラム：1と2裏にキック、2と4にスネア、16分のハイハット */
+    V.tone('sine',140,bt0,0.16,0.32,45);
+    V.tone('sine',140,bt0+B*1.75,0.14,0.26,45);
+    V.tone('sine',140,bt0+B*2.5,0.12,0.20,45);
+    V.noise(bt0+B,0.16,0.16,1400,'bandpass',1.2);
+    V.noise(bt0+B*3,0.16,0.16,1400,'bandpass',1.2);
+    for(i2=0;i2<16;i2++)
+      V.noise(bt0+sw(i2),0.03,(i2%4===0)?0.055:((i2%2)?0.022:0.038),8000);
+    /* うねるベース */
+    for(i2=0;i2<8;i2++){
+      var d=bassPat[ci][i2];
+      if(d<-10)continue;
+      V.tone('triangle',rootHz[ci]*Math.pow(2,d/12),bt0+sw(i2*2),B*0.42,0.16);
+    }
+    /* 裏拍のクラビ風の刻み */
+    for(i2=0;i2<8;i2++){
+      if(i2%2===0)continue;
+      chord[ci].forEach(function(f){
+        V.tone('square',f,bt0+sw(i2*2),B*0.16,0.035);
+      });
+    }
+    /* 歌うようなメロディ */
+    if(b2>=2){
+      var mp=mel[(b2-2)%2];
+      for(i2=0;i2<8;i2++){
+        var dm=mp[i2];
+        if(dm<-10)continue;
+        V.tone('sawtooth',rootHz[ci]*4*Math.pow(2,dm/12),bt0+sw(i2*2),B*0.44,0.055);
+      }
+    }
+    if(b2%4===0)V.noise(bt0,0.6,0.07,3500);
+  }
+  var endT=bars*4*B,ED=2.8;
+  V.pad('triangle',73.42,endT,ED,0.13);
+  V.pad('square',293.66,endT,ED,0.05);
+  V.pad('square',349.23,endT,ED,0.05);
+  V.pad('sawtooth',440.00,endT,ED,0.05);
+  V.tone('sine',140,endT,0.24,0.30,45);
+  V.noise(endT,2.0,0.09,3000);
+}
+/* 3曲目：テクノ寄りのロック（BPM142・重い刻み） */
+function technoTrack(V){
+  var BPM=142,B=60/BPM,S16=B/4;
+  var bars=8,i2,b2;
+  var power=[82.41,82.41,110.00,98.00,82.41,87.31,110.00,98.00];   // E A G F
+  var lead=[659.25,587.33,493.88,587.33,659.25,783.99,659.25,587.33];
+  for(b2=0;b2<bars;b2++){
+    var bt0=b2*4*B,rt=power[b2];
+    for(i2=0;i2<4;i2++){
+      V.tone('sine',160,bt0+i2*B,0.14,0.36,42);
+      V.noise(bt0+i2*B,0.045,0.10,150,'lowpass');
+    }
+    V.noise(bt0+B,0.18,0.17,1800,'bandpass',1.1);
+    V.noise(bt0+B*3,0.18,0.17,1800,'bandpass',1.1);
+    for(i2=0;i2<16;i2++) V.noise(bt0+i2*S16,0.028,(i2%4===2)?0.05:0.028,9000);
+    /* 歪んだパワーコードの刻み */
+    for(i2=0;i2<8;i2++){
+      var st=bt0+i2*B/2;
+      if(b2===3&&i2>=4)continue;                 // ブレイク
+      V.tone('sawtooth',rt,st,B*0.34,0.15);
+      V.tone('sawtooth',rt*1.4983,st,B*0.34,0.10);  // 5度
+      V.tone('square',rt*2,st,B*0.30,0.05);
+    }
+    /* 上昇するシーケンス */
+    for(i2=0;i2<16;i2++)
+      V.tone('square',rt*4*Math.pow(2,((i2%4)*2)/12),bt0+i2*S16,S16*0.8,0.028);
+    /* リード */
+    if(b2>=4) V.tone('sawtooth',lead[b2],bt0,B*1.6,0.08);
+    if(b2===3) for(i2=0;i2<8;i2++) V.noise(bt0+B*2+i2*S16,0.06,0.05+i2*0.012,2500);
+    if(b2%4===0) V.noise(bt0,0.55,0.10,4000);
+  }
+  var endT=bars*4*B,ED=2.7;
+  V.pad('sawtooth',82.41,endT,ED,0.13);
+  V.pad('sawtooth',123.47,endT,ED,0.09);
+  V.pad('square',329.63,endT,ED,0.06);
+  V.pad('square',659.25,endT,ED*0.75,0.05);
+  V.tone('sine',160,endT,0.26,0.34,42);
+  V.noise(endT,2.1,0.12,3200);
+  V.noise(endT,1.0,0.06,300,'lowpass');
 }
 /* 照明が入る瞬間の音 */
 function lightSfx(){
@@ -707,7 +806,8 @@ function saveGame(){
   try{
     window.localStorage.setItem(SAVE_KEY,JSON.stringify({
       v:1,stage:stage,total:total,lives:lives,wallet:wallet,
-      lure:lureStock,girls:savedGirls,hearts:idolBonus,n:playerName,t:Date.now()
+      lure:lureStock,girls:savedGirls,hearts:idolBonus,
+      next:idolNext,show:idolShow,n:playerName,t:Date.now()
     }));
   }catch(e){}
 }
@@ -726,6 +826,7 @@ function continueGame(){
   wallet=j.wallet||0;
   lureStock=(j.lure===undefined)?LURE_MAX:j.lure;
   savedGirls=j.girls||0;idolBonus=j.hearts||0;
+  idolNext=j.next||IDOL_N;idolShow=j.show||0;
   if(!playerName&&j.n)playerName=j.n;
   canRetry=false;
   newStage();
@@ -1380,7 +1481,7 @@ function newStage(){
 }
 function startGame(){
   stage=1;total=0;lives=LIVES;canRetry=false;lureStock=LURE_MAX;wallet=0;
-  savedGirls=0;idolBonus=0;
+  savedGirls=0;idolBonus=0;idolNext=IDOL_N;idolShow=0;idolN=IDOL_N;
   skipBell=true;newStage();skipBell=false;
   state='opening';openT=now;
   musicStart();
@@ -1428,21 +1529,38 @@ function tallyCount(){
   var p=Math.min(1,(now-tallyT)/TALLY_MS);
   return Math.floor(tallyN*Math.pow(p,1.9));    // だんだん速くなる
 }
-function startIdol(demo){
+function startIdol(demo,n){
   idolDemo=!!demo;
+  idolN=Math.max(IDOL_N,n||idolNext);
+  idolRowsCache=idolRows(idolN);
   state='idol';introT=now;idolT=0;musicT=0;heartT=0;heartGot=0;idolSwapT=now;
-  idolSlots=[0,1,2,3,4,5,6];
-  idolAnim=[];
-  for(var i=0;i<7;i++)idolAnim.push({from:i,to:i,t:0});
+  idolSlots=[];idolAnim=[];
+  for(var i=0;i<idolN;i++){idolSlots.push(i);idolAnim.push({from:i,to:i,t:0});}
   held=null;
   idolMusic();                      // 暗いうちから曲は流れている
 }
+/* 人数に応じた3列の隊形（前列が少なく、後列ほど多い） */
+function idolRows(n){
+  if(n<=7)return [1,2,4];
+  if(n===12)return [3,4,5];
+  var front=Math.max(1,Math.round(n*0.25));
+  var mid=Math.max(front,Math.round(n*0.33));
+  var back=n-front-mid;
+  if(back<mid){back=mid;front=n-mid-back;}
+  if(front<1){front=1;mid=Math.max(1,Math.floor((n-1)/2));back=n-1-mid;}
+  return [front,mid,back];
+}
 function idolSlotPos(k,S,ox2,oy2){
-  /* 0:最前列1人 / 1-2:二列目 / 3-6:三列目 */
-  if(k===0)return {x:ox2+S*0.50,y:oy2+S*0.80,s:1.15};
-  if(k<=2)return {x:ox2+S*(k===1?0.34:0.66),y:oy2+S*0.635,s:1.00};
-  var i=k-3;
-  return {x:ox2+S*(0.17+i*0.22),y:oy2+S*0.48,s:0.86};
+  var r=idolRowsCache||idolRows(idolN);
+  var rowY=[0.80,0.635,0.48],rowS=[1.15,1.00,0.86];
+  var row=0,idx=k;
+  if(idx>=r[0]){idx-=r[0];row=1;}
+  if(row===1&&idx>=r[1]){idx-=r[1];row=2;}
+  var c=r[row]||1;
+  var span=(c<=1)?0:Math.min(0.80,0.20*c);
+  var x=(c<=1)?0.5:(0.5-span/2+span*(idx/(c-1)));
+  var shrink=Math.min(1,6/Math.max(r[0],r[1],r[2]));
+  return {x:ox2+S*x,y:oy2+S*rowY[row],s:rowS[row]*shrink};
 }
 function updateIdol(){
   var base=musicT||introT;
@@ -1455,8 +1573,11 @@ function updateIdol(){
   }
   if(now-idolSwapT>2600&&now-idolT<IDOL_MS-1500){
     idolSwapT=now;
-    var a=(Math.random()*7)|0,b=(Math.random()*7)|0,g2=0;
-    while(b===a&&g2++<10)b=(Math.random()*7)|0;
+    var r0=idolRowsCache||idolRows(idolN);
+    /* 半分は最前列（センター）を必ず入れ替える */
+    var a=(Math.random()<0.6)?((Math.random()*r0[0])|0):((Math.random()*idolN)|0);
+    var b=(Math.random()*idolN)|0,g2=0;
+    while(b===a&&g2++<10)b=(Math.random()*idolN)|0;
     if(a!==b){
       var t=idolSlots[a];idolSlots[a]=idolSlots[b];idolSlots[b]=t;
       idolAnim[idolSlots[a]]={from:b,to:a,t:now};
@@ -1469,7 +1590,10 @@ function updateIdol(){
   }
   if(heartT&&!heartGot&&now-heartT>=HEART_MS){
     heartGot=now;
-    if(!idolDemo){lives++;idolBonus++;}
+    if(!idolDemo){
+      lives++;idolBonus++;
+      idolNext=idolN+IDOL_STEP;idolShow++;
+    }
     beep(1046,0.09,0.05,'triangle');
     setTimeout(function(){beep(1568,0.09,0.05,'triangle');},90);
     setTimeout(function(){beep(2093,0.22,0.05,'triangle');},180);
@@ -1521,9 +1645,9 @@ function drawIdol(){
   ctx.fillRect(ox2,oy2+S*0.86,S,S*0.14);
   ctx.fillStyle='rgba(255,255,255,0.08)';
   ctx.fillRect(ox2,oy2+S*0.86,S,2);
-  /* 7人 */
+  /* メンバー */
   var beat=Math.sin(now*0.0075);
-  for(k=0;k<7;k++){
+  for(k=0;k<idolN;k++){
     var gi=idolSlots[k];
     var an=idolAnim[gi],p=idolSlotPos(k,S,ox2,oy2);
     if(an&&an.t&&now-an.t<600){
@@ -1613,7 +1737,7 @@ function drawIdol(){
   drawBoy(bx,by,34,'n',!!heartT);
   /* 見出しと歌詞的な演出 */
   ctx.fillStyle='rgba(255,212,0,'+(0.25+0.75*lit)+')';
-  bt('WATONER 7',W/2,oy2-16,3,'center',2);
+  bt('WATONER '+idolN,W/2,oy2-16,3,'center',2);
   if(!idolT){
     ctx.fillStyle='rgba(255,255,255,'+(0.25+0.5*lit)+')';
     bt('...',W/2,oy2+S/2,4,'center',6);
@@ -2272,8 +2396,9 @@ function update(){
       ? (girlCheerT?girlCheerT+GIRL_CHEER:Infinity)
       : (tallyDone+TALLY_HOLD);
     if(tallyDone&&now>=endAt){
-      if(girl.state==='follow'&&(savedGirls+1)%IDOL_N===0){
-        savedGirls++;startIdol();
+      if(girl.state==='follow'&&savedGirls+1>=idolNext){
+        savedGirls++;
+        startIdol(false,idolNext);
       }else{
         if(girl.state==='follow')savedGirls++;
         clearStage();
@@ -3522,9 +3647,9 @@ function drawHUD(){
     ctx.beginPath();ctx.arc(lx+li*9,31,3.4,0,7);
     ctx.fillStyle=(li<lives)?YEL:ink(0.18);ctx.fill();
   }
-  if(savedGirls%IDOL_N){
+  if(savedGirls<idolNext){
     ctx.fillStyle=rgba(GIRL_DRESS,0.85);
-    bt('W '+(savedGirls%IDOL_N)+'/'+IDOL_N,W*0.5+34,44,1,'left',1);
+    bt('W '+savedGirls+'/'+idolNext,W*0.5+34,44,1,'left',1);
   }
   var bw=W-pad*2,by=42,r=tBonus/TIME_MAX;
   ctx.fillStyle=ink(0.14);ctx.fillRect(pad,by,bw,2);
@@ -3606,7 +3731,9 @@ var HELP=[
 ['t','食べられている15秒間は逃げる好機。','Those 15 seconds are your chance to escape.'],
 ['s','アイドル結成','IDOL DEBUT'],
 ['i','heart','ワトナーを7人救うと、ゴール後に舞台が開く。','Save 7 WATONERs and a stage opens after the goal.'],
-['t','7人が衣装と髪型を変えて、踊りながら歌う。','The seven perform in their own costumes and hair.'],
+['t','その後は5人救うごとに新しい舞台。人数も増える。','Every 5 more brings a new, bigger stage.'],
+['t','衣装と髪型は全員ちがう。隊形も人数で変わる。','Costumes, hair and formation change with the size.'],
+['t','曲はユーロビート、グルーヴ、テクノロックと替わる。','The music rotates: eurobeat, groove, techno rock.'],
 ['t','緑のレーザーと反転フラッシュの演出つき。','Green lasers and inverted flashes light the stage.'],
 ['t','15秒後、歓声とともにハートが飛んでくる。','After 15s a heart flies to you with the cheers.'],
 ['t','受け取るとライフが1つ増える（1UP）。','Catching it gives you an extra life.'],
