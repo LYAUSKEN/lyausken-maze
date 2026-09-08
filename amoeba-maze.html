@@ -131,7 +131,12 @@ var PAD_ARROW='#ffffff';    // 矢印
 var PAD_ON='#EDE939';       // PANTONE 394 C（押している時）
 var BOY_SHIRT='#ffdd33',BOY_OVER='#2b53c8',BOY_CAP='#7a4a1e',BOY_HAIR='#4a2f18',SKIN='#f7c9a0';
 var BOY_SHOE='#2ea84f';     // 靴
-var GIRL_DRESS='#ff8ac0',GIRL_HAIR='#43291a';
+var GIRL_DRESS='#ff8ac0',GIRL_HAIR='#43291a',dressOv=null,hairOv=0;
+var IDOL_N=7;              // 救出した人数がこの倍数になるとステージが開く
+var IDOL_MS=15000;         // 歌と踊りの長さ(ms)
+var INTRO_MS=3000;         // 曲が始まってから照明が上がるまで(ms)
+var HEART_MS=1700;         // ハートが飛んでくる時間(ms)
+var IDOL_COLORS=['#ff8ac0','#ffd400','#7ad7ff','#8affa0','#ffa15c','#c99bff','#ffffff'];
 var BOMB_C='#ff7a00';       // 爆弾アイコン
 var BTN_BG='#3B3B4B';       // PANTONE 4132 C（ボタンの地色）
 var BTN_TX='#ffffff';       // ボタンの文字
@@ -181,6 +186,7 @@ var COLS=11,ROWS=15,cell=20,ox=0,oy=0,padTop=0,padH=0,bs=40,dpad={},lureBtn={},p
 var wallet=0,coinPressed=false,buyKind='';
 var pops=[],pauseBtn={},pauseDownT=0,pausePressed=false;
 var tallyT=0,tallyFrom=0,tallyN=0,tallyDone=0,tallyTick=0,tallyLast=-1,girlCheerT=0;
+var savedGirls=0,idolT=0,introT=0,musicT=0,heartT=0,heartGot=0,idolSlots=[],idolAnim=[],idolSwapT=0,idolBonus=0,idolDemo=false;
 function pop(x,y,txt,col){pops.push({x:x,y:y,t:now,txt:txt,c:col||'#ffd400'});}
 var grid=[],start={r:0,c:0},goal={r:0,c:0};
 var state='title';
@@ -376,8 +382,15 @@ function fallSfx(){
   }catch(e){}
 }
 /* ステージ開始の鐘（約5秒・教会の鐘のイメージ） */
+var bellRetry=0;
 function bellSfx(){
-  if(!audioOK())return;
+  if(!audioInit())return;
+  if(ac.state!=='running'){
+    try{ac.resume();}catch(e){}
+    if(bellRetry++<30)setTimeout(function(){if(state==='ready')bellSfx();},100);
+    return;
+  }
+  bellRetry=0;
   try{
     var t0=ac.currentTime+0.03;
     var strikes=[[523.25,0],[392.00,1.15],[659.25,2.30],[523.25,3.45]];
@@ -442,6 +455,149 @@ function failSfx(){
     var ng=ac.createGain();ng.gain.value=0.05;
     src.connect(hp);hp.connect(ng);ng.connect(mg);
     src.start(t0+st+dur*0.78);
+  }catch(e){}
+}
+/* アイドルの歌（ユーロビート調・約15秒） */
+var idolRetry=0;
+function idolMusic(){
+  if(musicOn)return;
+  if(!audioInit())return;
+  if(ac.state!=='running'){                 // resumeは非同期。rungingになるまで待つ
+    try{
+      var pr=ac.resume();
+      if(pr&&pr.then)pr.then(function(){if(state==='idol')idolMusic();});
+    }catch(e){}
+    if(idolRetry++<50) setTimeout(function(){if(state==='idol')idolMusic();},100);
+    return;
+  }
+  idolRetry=0;
+  musicStop();
+  try{
+    var t0=ac.currentTime+0.05;
+    var BPM=156,B=60/BPM,S16=B/4;            // 16分音符
+    musicGain=ac.createGain();musicGain.gain.value=1;musicGain.connect(mg);musicOn=true;
+    /* ノイズは1つ作って使い回す */
+    var nlen=Math.floor(ac.sampleRate*0.2),nbuf=ac.createBuffer(1,nlen,ac.sampleRate),nd=nbuf.getChannelData(0);
+    for(var q=0;q<nlen;q++)nd[q]=Math.random()*2-1;
+    function noise(st,dur,vol,hz,type){
+      var src=ac.createBufferSource();src.buffer=nbuf;
+      var f=ac.createBiquadFilter();f.type=type||'highpass';f.frequency.value=hz;
+      var g=ac.createGain();
+      g.gain.setValueAtTime(vol,t0+st);
+      g.gain.exponentialRampToValueAtTime(0.0001,t0+st+dur);
+      src.connect(f);f.connect(g);g.connect(musicGain);
+      src.start(t0+st);src.stop(t0+st+dur+0.02);
+    }
+    function pad(type,f,st,dur,vol){        // 伸ばして終わる音
+      var o=ac.createOscillator(),g=ac.createGain();
+      o.type=type;o.frequency.setValueAtTime(f,t0+st);
+      g.gain.setValueAtTime(0.0001,t0+st);
+      g.gain.exponentialRampToValueAtTime(vol,t0+st+0.06);
+      g.gain.setValueAtTime(vol,t0+st+dur*0.40);
+      g.gain.exponentialRampToValueAtTime(0.0001,t0+st+dur);
+      o.connect(g);g.connect(musicGain);
+      o.start(t0+st);o.stop(t0+st+dur+0.05);
+    }
+    function tone(type,f,st,dur,vol,f2){
+      var o=ac.createOscillator(),g=ac.createGain();
+      o.type=type;o.frequency.setValueAtTime(f,t0+st);
+      if(f2)o.frequency.exponentialRampToValueAtTime(f2,t0+st+dur);
+      g.gain.setValueAtTime(0.0001,t0+st);
+      g.gain.exponentialRampToValueAtTime(vol,t0+st+0.008);
+      g.gain.exponentialRampToValueAtTime(0.0001,t0+st+dur);
+      o.connect(g);g.connect(musicGain);
+      o.start(t0+st);o.stop(t0+st+dur+0.02);
+    }
+    if(state==='idol')musicT=now;                 // 実際に鳴り始めた時刻
+    /* Am - F - G - Am / Am - F - G - E  のイ短調進行 */
+    var roots=[110.00,87.31,98.00,110.00,110.00,87.31,98.00,82.41];
+    var third=[130.81,110.00,123.47,130.81,130.81,110.00,123.47,103.83];
+    var fifth=[164.81,130.81,146.83,164.81,164.81,130.81,146.83,123.47];
+    var A=[440.00,493.88,523.25,587.33,659.25,698.46,783.99,880.00];  // イ短調
+    var hook=[4,4,2,4,6,6,4,-1, 5,4,2,0,2,2,-1,-1];
+    var bars=8,i2,b2;
+    for(b2=0;b2<bars;b2++){
+      var bt0=b2*4*B;
+      /* 四つ打ちのキック */
+      for(i2=0;i2<4;i2++){
+        tone('sine',150,bt0+i2*B,0.13,0.34,48);
+        noise(bt0+i2*B,0.05,0.10,120,'lowpass');
+      }
+      /* 裏拍のハイハット */
+      for(i2=0;i2<8;i2++) noise(bt0+i2*B/2+B/4,0.035,(i2%2)?0.05:0.035,7000);
+      /* 走るベース（8分＋16分の跳ね） */
+      for(i2=0;i2<8;i2++){
+        var st=bt0+i2*B/2;
+        tone('sawtooth',roots[b2],st,B*0.30,0.13);
+        if(i2%2===1) tone('sawtooth',roots[b2]*2,st+B*0.25,B*0.16,0.07);
+      }
+      /* 16分のアルペジオ（最後の小節は後半で止めて溜める） */
+      var arp=[roots[b2]*2,third[b2]*2,fifth[b2]*2,roots[b2]*4];
+      var arpN=(b2===bars-1)?12:16;
+      for(i2=0;i2<arpN;i2++)
+        tone('square',arp[i2%4],bt0+i2*S16,S16*0.85,0.035);
+      /* 最後の小節の終わりにドラムのフィル */
+      if(b2===bars-1)
+        for(i2=12;i2<16;i2++) noise(bt0+i2*S16,0.07,0.09+(i2-12)*0.02,2500);
+      /* フック（後半の小節で歌う） */
+      if(b2>=2){
+        for(i2=0;i2<16;i2++){
+          var hn=hook[i2];
+          if(hn>=0){
+            var f0=A[hn]*(b2>=6?2:1);
+            tone('square',f0,bt0+i2*S16,S16*1.6,0.075);
+            tone('triangle',f0/2,bt0+i2*S16,S16*1.4,0.035);
+          }
+        }
+      }
+      /* 小節終わりのクラッシュ */
+      if(b2%4===0) noise(bt0,0.5,0.09,4000);
+    }
+    /* 締め：イ短調の和音を伸ばして終わる */
+    var endT=bars*4*B,ED=2.6;
+    pad('sawtooth',110.00,endT,ED,0.10);          // A2
+    pad('sawtooth',164.81,endT,ED,0.07);          // E3
+    pad('square', 261.63,endT,ED,0.055);          // C4
+    pad('square', 440.00,endT,ED,0.075);          // A4
+    pad('triangle',880.00,endT,ED*0.8,0.05);      // A5
+    tone('sine',150,endT,0.22,0.34,48);           // 最後のキック
+    noise(endT,1.9,0.11,3000);                    // クラッシュ
+    noise(endT,0.9,0.05,300,'lowpass');
+  }catch(e){}
+}
+/* 照明が入る瞬間の音 */
+function lightSfx(){
+  if(!audioOK())return;
+  try{
+    beep(2400,0.05,0.05,'square');
+    noiseBurst(0.18,0.07,5000,2000);
+    setTimeout(function(){beep(120,0.25,0.06,'sine');},30);
+  }catch(e){}
+}
+/* 歓声 */
+function cheerSfx(){
+  if(!audioInit())return;
+  if(ac.state!=='running'){try{ac.resume();}catch(e){}return;}
+  try{
+    var t0=ac.currentTime,n=Math.floor(ac.sampleRate*2.2);
+    var b=ac.createBuffer(1,n,ac.sampleRate),d=b.getChannelData(0);
+    for(var i=0;i<n;i++){
+      var t=i/n;
+      d[i]=(Math.random()*2-1)*Math.min(1,t*6)*(1-t*0.7)*0.9;
+    }
+    var src=ac.createBufferSource();src.buffer=b;
+    var bp=ac.createBiquadFilter();bp.type='bandpass';bp.frequency.value=1400;bp.Q.value=0.7;
+    var g=ac.createGain();g.gain.value=0.16;
+    src.connect(bp);bp.connect(g);g.connect(mg);
+    src.start(t0);
+    [1046.5,1318.5,1568,2093].forEach(function(f,k){
+      var o=ac.createOscillator(),g2=ac.createGain();
+      o.type='square';o.frequency.value=f;
+      g2.gain.setValueAtTime(0.0001,t0+k*0.11);
+      g2.gain.exponentialRampToValueAtTime(0.06,t0+k*0.11+0.02);
+      g2.gain.exponentialRampToValueAtTime(0.0001,t0+k*0.11+0.4);
+      o.connect(g2);g2.connect(mg);o.start(t0+k*0.11);o.stop(t0+k*0.11+0.45);
+    });
   }catch(e){}
 }
 /* 出発の汽笛 */
@@ -551,7 +707,7 @@ function saveGame(){
   try{
     window.localStorage.setItem(SAVE_KEY,JSON.stringify({
       v:1,stage:stage,total:total,lives:lives,wallet:wallet,
-      lure:lureStock,n:playerName,t:Date.now()
+      lure:lureStock,girls:savedGirls,hearts:idolBonus,n:playerName,t:Date.now()
     }));
   }catch(e){}
 }
@@ -569,6 +725,7 @@ function continueGame(){
   stage=j.stage;total=j.total||0;lives=j.lives||LIVES;
   wallet=j.wallet||0;
   lureStock=(j.lure===undefined)?LURE_MAX:j.lure;
+  savedGirls=j.girls||0;idolBonus=j.hearts||0;
   if(!playerName&&j.n)playerName=j.n;
   canRetry=false;
   newStage();
@@ -609,6 +766,8 @@ function nameBox(){return {x:W*0.055,y:H*0.515,w:W*0.56,h:Math.max(30,H*0.050)};
 function startBtn(){var w=W*0.46,h=Math.max(34,H*0.055);return {x:(W-w)/2,y:H*0.925,w:w,h:h};}
 function howBtn(){var w=W*0.52,h=Math.max(28,H*0.042);
   return {x:(W-w)/2,y:(saveInfo?H*0.775:H*0.855),w:w,h:h};}
+function demoBtn(){var h=Math.max(28,H*0.042);
+  return {x:W*0.655,y:(saveInfo?H*0.775:H*0.855),w:W*0.285,h:h};}
 function contBtn(){var w=W*0.56,h=Math.max(32,H*0.050);return {x:(W-w)/2,y:H*0.858,w:w,h:h};}
 function closeBtn(){var w=W*0.44,h=Math.max(32,H*0.05);return {x:(W-w)/2,y:H-h-14,w:w,h:h};}
 function placeNameInput(){
@@ -1221,6 +1380,7 @@ function newStage(){
 }
 function startGame(){
   stage=1;total=0;lives=LIVES;canRetry=false;lureStock=LURE_MAX;wallet=0;
+  savedGirls=0;idolBonus=0;
   skipBell=true;newStage();skipBell=false;
   state='opening';openT=now;
   musicStart();
@@ -1268,8 +1428,222 @@ function tallyCount(){
   var p=Math.min(1,(now-tallyT)/TALLY_MS);
   return Math.floor(tallyN*Math.pow(p,1.9));    // だんだん速くなる
 }
+function startIdol(demo){
+  idolDemo=!!demo;
+  state='idol';introT=now;idolT=0;musicT=0;heartT=0;heartGot=0;idolSwapT=now;
+  idolSlots=[0,1,2,3,4,5,6];
+  idolAnim=[];
+  for(var i=0;i<7;i++)idolAnim.push({from:i,to:i,t:0});
+  held=null;
+  idolMusic();                      // 暗いうちから曲は流れている
+}
+function idolSlotPos(k,S,ox2,oy2){
+  /* 0:最前列1人 / 1-2:二列目 / 3-6:三列目 */
+  if(k===0)return {x:ox2+S*0.50,y:oy2+S*0.80,s:1.15};
+  if(k<=2)return {x:ox2+S*(k===1?0.34:0.66),y:oy2+S*0.635,s:1.00};
+  var i=k-3;
+  return {x:ox2+S*(0.17+i*0.22),y:oy2+S*0.48,s:0.86};
+}
+function updateIdol(){
+  var base=musicT||introT;
+  if(!idolT){                       // 曲が始まって3秒で照明が入る
+    if(now-base>=INTRO_MS){
+      idolT=now;idolSwapT=now;
+      lightSfx();
+    }
+    return;
+  }
+  if(now-idolSwapT>2600&&now-idolT<IDOL_MS-1500){
+    idolSwapT=now;
+    var a=(Math.random()*7)|0,b=(Math.random()*7)|0,g2=0;
+    while(b===a&&g2++<10)b=(Math.random()*7)|0;
+    if(a!==b){
+      var t=idolSlots[a];idolSlots[a]=idolSlots[b];idolSlots[b]=t;
+      idolAnim[idolSlots[a]]={from:b,to:a,t:now};
+      idolAnim[idolSlots[b]]={from:a,to:b,t:now};
+      beep(1200,0.05,0.03,'square');
+    }
+  }
+  if(!heartT&&now-(musicT||introT)>=IDOL_MS){    // 曲が終わると同時に歓声
+    heartT=now;musicStop();cheerSfx();
+  }
+  if(heartT&&!heartGot&&now-heartT>=HEART_MS){
+    heartGot=now;
+    if(!idolDemo){lives++;idolBonus++;}
+    beep(1046,0.09,0.05,'triangle');
+    setTimeout(function(){beep(1568,0.09,0.05,'triangle');},90);
+    setTimeout(function(){beep(2093,0.22,0.05,'triangle');},180);
+  }
+  if(heartGot&&now-heartGot>=1200){
+    if(idolDemo){idolDemo=false;musicStop();toTitle();}
+    else clearStage();
+  }
+}
+function heartPath(t,ax,ay,bx,by){
+  var e=t*t*(3-2*t);
+  return {x:ax+(bx-ax)*e,y:ay+(by-ay)*e-Math.sin(Math.PI*t)*60};
+}
+function drawHeart(x,y,r,col,a){
+  ctx.save();ctx.globalAlpha=(a===undefined?1:a);
+  ctx.fillStyle=col||'#ff3b6b';
+  ctx.beginPath();
+  ctx.moveTo(x,y+r*0.9);
+  ctx.bezierCurveTo(x-r*1.4,y-r*0.2,x-r*0.5,y-r*1.2,x,y-r*0.35);
+  ctx.bezierCurveTo(x+r*0.5,y-r*1.2,x+r*1.4,y-r*0.2,x,y+r*0.9);
+  ctx.closePath();ctx.fill();
+  ctx.restore();
+}
+function drawIdol(){
+  var S=Math.min(W,H*0.62),ox2=(W-S)/2,oy2=(H-S)/2-H*0.05;
+  var lit=idolT?1:Math.min(1,(now-(musicT||introT))/INTRO_MS);
+  lit=lit*lit*(3-2*lit);                       // ゆっくり明るくなる
+  ctx.fillStyle='#05050c';ctx.fillRect(0,0,W,H);
+  /* 舞台の正方形 */
+  ctx.fillStyle='#12081c';ctx.fillRect(ox2,oy2,S,S);
+  ctx.strokeStyle='rgba(255,255,255,0.25)';ctx.lineWidth=2;
+  ctx.strokeRect(ox2+1,oy2+1,S-2,S-2);
+  /* スポットライト */
+  var i,k;
+  for(i=0;i<3;i++){
+    var sw=Math.sin(now*0.0012+i*2.1);
+    var tx=ox2+S*(0.5+sw*0.30),bx0=ox2+S*(0.16+i*0.34);
+    var gr=ctx.createLinearGradient(bx0,oy2,tx,oy2+S);
+    gr.addColorStop(0,'rgba(255,255,220,'+(0.18*lit)+')');
+    gr.addColorStop(1,'rgba(255,255,220,0)');
+    ctx.fillStyle=gr;
+    ctx.beginPath();
+    ctx.moveTo(bx0-S*0.03,oy2);ctx.lineTo(bx0+S*0.03,oy2);
+    ctx.lineTo(tx+S*0.16,oy2+S*0.92);ctx.lineTo(tx-S*0.16,oy2+S*0.92);
+    ctx.closePath();ctx.fill();
+  }
+  /* 舞台の床 */
+  ctx.fillStyle='#2a1636';
+  ctx.fillRect(ox2,oy2+S*0.86,S,S*0.14);
+  ctx.fillStyle='rgba(255,255,255,0.08)';
+  ctx.fillRect(ox2,oy2+S*0.86,S,2);
+  /* 7人 */
+  var beat=Math.sin(now*0.0075);
+  for(k=0;k<7;k++){
+    var gi=idolSlots[k];
+    var an=idolAnim[gi],p=idolSlotPos(k,S,ox2,oy2);
+    if(an&&an.t&&now-an.t<600){
+      var q=(now-an.t)/600,pf=idolSlotPos(an.from,S,ox2,oy2);
+      var e=q*q*(3-2*q);
+      p={x:pf.x+(p.x-pf.x)*e,y:pf.y+(p.y-pf.y)*e,s:pf.s+(p.s-pf.s)*e};
+    }
+    /* ステップ：2拍で左右に体重を移し、1拍ごとに膝で沈む */
+    var beatMs=60000/156;
+    var bp=idolT?((now-idolT)/beatMs+k*0.02):0;  // 照明が上がるまでは動かない
+    var side=Math.sin(Math.PI*bp);             // 2拍で1往復
+    var bounce=Math.abs(Math.sin(Math.PI*bp)); // 1拍ごとの沈み
+    var bi=Math.floor(bp);
+    var stepX=side*S*0.028*p.s;
+    var lean=side*0.10;
+    var drop=(1-bounce)*S*0.016*p.s;           // 膝の曲げ
+    var pose=(bi%2===0)?2:3;                   // 腕を交互に
+    var face2='s';
+    if(bi%16===7)face2=(side>0)?'e':'w';        // 8拍に1度、体を切り返す
+    /* 影 */
+    ctx.save();ctx.translate(p.x+stepX,p.y+2);ctx.scale(1,0.22);
+    ctx.beginPath();ctx.arc(0,0,S*0.055*p.s*(0.9+0.15*bounce),0,7);
+    ctx.fillStyle='rgba(0,0,0,0.45)';ctx.fill();ctx.restore();
+    dressOv=IDOL_COLORS[gi%IDOL_COLORS.length];
+    hairOv=gi%3;
+    ctx.save();
+    ctx.translate(p.x+stepX,p.y+drop);
+    ctx.rotate(lean);
+    ctx.scale(1+0.04*(1-bounce),1-0.06*(1-bounce));
+    drawGirl(0,0,S*0.15*p.s,1,face2,idolT?((face2==='s')?pose:0):0);
+    ctx.restore();
+    dressOv=null;hairOv=0;
+  }
+  /* 緑のレーザー */
+  ctx.save();
+  ctx.beginPath();ctx.rect(ox2,oy2,S,S);ctx.clip();
+  ctx.globalCompositeOperation='lighter';
+  for(i=0;i<(idolT?6:0);i++){
+    var lp=((now*0.0011)+i*0.31)%1;
+    if(lp<0.62){
+      var a3=lp/0.62,al=Math.sin(Math.PI*a3);
+      var sx2=ox2+S*(0.08+0.17*i),sy2=oy2+S*0.04;
+      var ang=-0.85+1.7*((i%2)?a3:1-a3);
+      var ex=sx2+Math.sin(ang)*S*1.4,ey=sy2+Math.cos(ang)*S*1.4;
+      ctx.strokeStyle='rgba(50,255,110,'+(0.16*al)+')';ctx.lineWidth=S*0.055;
+      ctx.beginPath();ctx.moveTo(sx2,sy2);ctx.lineTo(ex,ey);ctx.stroke();
+      ctx.strokeStyle='rgba(190,255,215,'+(0.85*al)+')';ctx.lineWidth=Math.max(1,S*0.009);
+      ctx.beginPath();ctx.moveTo(sx2,sy2);ctx.lineTo(ex,ey);ctx.stroke();
+      ctx.beginPath();ctx.arc(sx2,sy2,S*0.012*(0.6+al),0,7);
+      ctx.fillStyle='rgba(160,255,190,'+al+')';ctx.fill();
+    }
+  }
+  ctx.restore();
+  /* 暗転（照明が上がるにつれて薄れる） */
+  if(lit<1){
+    ctx.fillStyle='rgba(0,0,0,'+(0.94*(1-lit))+')';
+    ctx.fillRect(ox2,oy2,S,S);
+  }
+  /* 観客のペンライト */
+  for(i=0;i<14;i++){
+    var lx=ox2+S*(0.05+0.9*((i*37)%100)/100);
+    var ly=oy2+S+8+Math.abs(Math.sin(now*0.006+i))*6;
+    ctx.fillStyle=IDOL_COLORS[i%IDOL_COLORS.length];
+    ctx.globalAlpha=0.75;
+    ctx.fillRect(lx,ly,3,10);
+    ctx.globalAlpha=1;
+  }
+  /* 反転のフラッシュ：曲の間に2回だけ */
+  if(!heartT&&idolT){
+    var el=now-idolT,fl2=false,fi;
+    var FLASH_AT=[3080,9240];          // 2小節目と6小節目の頭
+    for(fi=0;fi<FLASH_AT.length;fi++){
+      var d2=el-FLASH_AT[fi];
+      if(d2>=0&&d2<70){fl2=true;break;}
+    }
+    if(fl2){
+      /* 純白ではなく中間グレーで反転させ、明暗の振れ幅を抑える */
+      ctx.save();
+      ctx.globalCompositeOperation='difference';
+      ctx.globalAlpha=0.45;
+      ctx.fillStyle='#8e8e8e';ctx.fillRect(0,0,W,H);
+      ctx.restore();
+    }
+  }
+  /* ラウスケン */
+  var by=oy2+S+40,bx=W/2;
+  drawBoy(bx,by,34,'n',!!heartT);
+  /* 見出しと歌詞的な演出 */
+  ctx.fillStyle='rgba(255,212,0,'+(0.25+0.75*lit)+')';
+  bt('WATONER 7',W/2,oy2-16,3,'center',2);
+  if(!idolT){
+    ctx.fillStyle='rgba(255,255,255,'+(0.25+0.5*lit)+')';
+    bt('...',W/2,oy2+S/2,4,'center',6);
+    ctx.fillStyle='rgba(255,255,255,0.55)';
+    bt(idolDemo?'TAP TO EXIT':'',W/2,oy2+S+70,2,'center',2);
+  }
+  else if(!heartT){
+    ctx.fillStyle='rgba(255,255,255,0.75)';
+    bt(idolDemo?'IDOL DEBUT!  TAP TO EXIT':'IDOL DEBUT!',W/2,oy2+S+70,2,'center',2);
+    var note=Math.floor(now/300)%4;
+    ctx.fillStyle='rgba(255,255,255,'+(0.35+0.3*Math.abs(beat))+')';
+    bt(['*','~','*','~'][note]+' LA LA LA '+['~','*','~','*'][note],W/2,oy2+S+92,1,'center',2);
+  }else{
+    /* ハートが飛んでくる */
+    var t=Math.min(1,(now-heartT)/HEART_MS);
+    var hp=heartPath(t,ox2+S*0.5,oy2+S*0.72,bx,by-24);
+    if(!heartGot){
+      drawHeart(hp.x,hp.y,14+2*Math.sin(now*0.02),'#ff3b6b',1);
+      ctx.fillStyle='#ffd400';
+      bt('CATCH IT!',W/2,oy2+S+70,2,'center',2);
+    }else{
+      var a2=Math.min(1,(now-heartGot)/900);
+      drawHeart(bx,by-30-a2*26,16*(1-a2*0.3),'#ff3b6b',1-a2);
+      ctx.fillStyle='#3cff88';
+      bt('1 UP !',W/2,by-46-a2*20,4,'center',2);
+    }
+  }
+}
 function clearStage(){
-  if(state!=='playing'&&state!=='tally')return;
+  if(state!=='playing'&&state!=='tally'&&state!=='idol')return;
   makeConfetti();
   girlPen=(girl.state==='gone'||girl.state==='eating')?GIRL_PENALTY:0;
   var bonus=(girl.state==='follow')?GIRL_BONUS:0;
@@ -1742,6 +2116,10 @@ function tap(x,y){
     if(inBox(sb,x,y,8)){beep(880,0.09,0.05,'triangle');startGame();}
     return;
   }
+  if(state==='idol'){
+    if(idolDemo&&x!==undefined){musicStop();idolDemo=false;beep(400,0.08,0.045,'triangle');toTitle();}
+    return;
+  }
   if(state==='help'){
     if(x===undefined)return;
     var cb=closeBtn();
@@ -1893,8 +2271,16 @@ function update(){
     var endAt=(girl.state==='follow')
       ? (girlCheerT?girlCheerT+GIRL_CHEER:Infinity)
       : (tallyDone+TALLY_HOLD);
-    if(tallyDone&&now>=endAt) clearStage();
+    if(tallyDone&&now>=endAt){
+      if(girl.state==='follow'&&(savedGirls+1)%IDOL_N===0){
+        savedGirls++;startIdol();
+      }else{
+        if(girl.state==='follow')savedGirls++;
+        clearStage();
+      }
+    }
   }
+  if(state==='idol') updateIdol();
   if(state==='opening'&&now-openT>=OPEN_MS) endOpening();
   if(state==='ready'&&(now-readyT)/1000>=viewLimit()){
     state='countdown';cdT=now;cdLast=-1;
@@ -2886,7 +3272,7 @@ function drawGirl(x,y,h,scale,face,cheer){
   var w=h*0.5,back=(face==='n'),side=(face==='w'||face==='e'),f=(face==='w')?-1:1;
   if(cheer){back=false;side=false;}
   var hy=y-h*0.40,hr=h*0.19;
-  ctx.fillStyle=GIRL_DRESS;                      // ピンクのドレス
+  ctx.fillStyle=dressOv||GIRL_DRESS;             // ドレス（衣装の指定があればそれを使う）
   ctx.beginPath();
   ctx.moveTo(x-w*(side?0.48:0.66),y+h*0.40);
   ctx.lineTo(x-w*(side?0.22:0.30),y-h*0.20);
@@ -2894,7 +3280,16 @@ function drawGirl(x,y,h,scale,face,cheer){
   ctx.lineTo(x+w*(side?0.48:0.66),y+h*0.40);
   ctx.closePath();ctx.fill();
   ctx.fillStyle=SKIN;
-  if(cheer){                                   // 両手を上げて万歳
+  if(cheer===2||cheer===3){                    // 片腕を胸の前へ、もう片腕は下ろす
+    var up=(cheer===2)?1:-1,dn=-up;
+    ctx.save();ctx.translate(x+up*w*0.40,y-h*0.10);ctx.rotate(-up*0.75);
+    ctx.fillRect(-w*0.13,-h*0.30,w*0.26,h*0.36);ctx.restore();
+    ctx.beginPath();ctx.arc(x+up*w*0.14,y-h*0.34,h*0.082,0,7);ctx.fill();
+    ctx.save();ctx.translate(x+dn*w*0.52,y-h*0.08);ctx.rotate(dn*0.30);
+    ctx.fillRect(-w*0.13,-h*0.04,w*0.26,h*0.32);ctx.restore();
+    ctx.beginPath();ctx.arc(x+dn*w*0.62,y+h*0.22,h*0.075,0,7);ctx.fill();
+  }
+  else if(cheer){                              // 両手を上げて万歳
     ctx.save();ctx.translate(x-w*0.46,y-h*0.14);ctx.rotate(0.85);
     ctx.fillRect(-w*0.13,-h*0.26,w*0.26,h*0.34);ctx.restore();
     ctx.save();ctx.translate(x+w*0.46,y-h*0.14);ctx.rotate(-0.85);
@@ -2911,12 +3306,33 @@ function drawGirl(x,y,h,scale,face,cheer){
   ctx.beginPath();ctx.arc(x,hy,hr,0,7);ctx.fill();
   ctx.fillStyle=GIRL_HAIR;
   if(side){
-    ctx.beginPath();ctx.arc(x-f*hr*0.40,hy+hr*0.10,hr*0.85,0,7);ctx.fill();
-    ctx.fillRect(x-f*hr*1.15-(f>0?0:0),hy-hr*0.4,hr*0.5,hr*1.7);
+    /* 横向き：頭頂から後頭部まで髪で覆う（地肌が出ないように） */
+    ctx.beginPath();ctx.arc(x,hy-hr*0.06,hr*1.10,Math.PI*0.88,Math.PI*2.12);ctx.fill();
+    ctx.beginPath();ctx.arc(x-f*hr*0.42,hy+hr*0.04,hr*0.96,0,7);ctx.fill();
+    ctx.fillRect(x-f*hr*1.05-hr*0.25,hy-hr*0.35,hr*0.5,hr*1.5);
+    if(hairOv===1){                       /* ツインテール */
+      ctx.beginPath();ctx.arc(x-f*hr*1.28,hy+hr*0.55,hr*0.5,0,7);ctx.fill();
+      ctx.fillRect(x-f*hr*1.42-hr*0.28,hy+hr*0.55,hr*0.56,hr*1.4);
+    }else if(hairOv===2){                 /* ロング */
+      ctx.fillRect(x-f*hr*0.95-hr*0.38,hy-hr*0.2,hr*0.76,hr*3.3);
+    }
   }else{
     ctx.beginPath();ctx.arc(x,hy-h*0.03,hr*1.12,Math.PI*0.95,Math.PI*2.05);ctx.fill();
-    ctx.fillRect(x-hr*1.2,hy-hr*0.5,hr*0.42,hr*1.6);
-    ctx.fillRect(x+hr*0.78,hy-hr*0.5,hr*0.42,hr*1.6);
+    if(hairOv===1){                       /* ツインテール */
+      ctx.fillRect(x-hr*1.15,hy-hr*0.5,hr*0.40,hr*1.0);
+      ctx.fillRect(x+hr*0.75,hy-hr*0.5,hr*0.40,hr*1.0);
+      ctx.beginPath();ctx.arc(x-hr*1.32,hy+hr*0.62,hr*0.52,0,7);ctx.fill();
+      ctx.beginPath();ctx.arc(x+hr*1.32,hy+hr*0.62,hr*0.52,0,7);ctx.fill();
+      ctx.fillRect(x-hr*1.62,hy+hr*0.62,hr*0.6,hr*1.5);
+      ctx.fillRect(x+hr*1.02,hy+hr*0.62,hr*0.6,hr*1.5);
+    }else if(hairOv===2){                 /* ロングストレート */
+      ctx.fillRect(x-hr*1.28,hy-hr*0.5,hr*0.52,hr*3.6);
+      ctx.fillRect(x+hr*0.76,hy-hr*0.5,hr*0.52,hr*3.6);
+      ctx.beginPath();ctx.arc(x,hy+hr*0.2,hr*1.02,0,Math.PI);ctx.fill();
+    }else{                                /* ボブ */
+      ctx.fillRect(x-hr*1.2,hy-hr*0.5,hr*0.42,hr*1.6);
+      ctx.fillRect(x+hr*0.78,hy-hr*0.5,hr*0.42,hr*1.6);
+    }
   }
   if(!back){
     ctx.fillStyle='#222';
@@ -3098,12 +3514,17 @@ function drawHUD(){
   ctx.fillStyle=ink(1);
   bt(('0'+stage).slice(-2),pad,36,3,'left',0);
   bt(String(total+score),W-pad,36,3,'right',0);
-  var lx=W*0.5-((LIVES-1)*9)/2;
+  var shown=Math.max(LIVES,lives);
+  var lx=W*0.5-((shown-1)*9)/2;
   ctx.fillStyle=ink(0.45);
   bt('LIFE',W*0.5,16,2,'center',1);
-  for(var li=0;li<LIVES;li++){
+  for(var li=0;li<shown;li++){
     ctx.beginPath();ctx.arc(lx+li*9,31,3.4,0,7);
     ctx.fillStyle=(li<lives)?YEL:ink(0.18);ctx.fill();
+  }
+  if(savedGirls%IDOL_N){
+    ctx.fillStyle=rgba(GIRL_DRESS,0.85);
+    bt('W '+(savedGirls%IDOL_N)+'/'+IDOL_N,W*0.5+34,44,1,'left',1);
   }
   var bw=W-pad*2,by=42,r=tBonus/TIME_MAX;
   ctx.fillStyle=ink(0.14);ctx.fillRect(pad,by,bw,2);
@@ -3146,11 +3567,11 @@ var helpScroll=0,helpDragY=null,helpMax=0;
 var HELP=[
 ['h','遊び方','HOW TO PLAY'],
 ['s','登場するもの','CHARACTERS'],
-['t','ラウスケン：あなた。迷宮を走る少年。','LYAUSKEN: you, the boy running the labyrinth.'],
-['t','ワトナー：牢屋にとらわれた少女。','WATONER: the girl locked in the cage.'],
-['t','ヌメリン：桃色の追跡者。キセキを食べて迫る。','NUMELIN: the pink chaser that eats your trajectory.'],
-['t','待機ヌメリン：紫。通路をふさいで待ち構える。','WAITING NUMELIN: purple, it blocks corridors.'],
-['t','キセキ：歩いた跡に残る黄色い丸。1つ30点。','TRAJECTORY: the yellow dots you leave. 30 pts each.'],
+['i','lyausken','ラウスケン：あなた。迷宮を走る少年。','LYAUSKEN: you, the boy in the labyrinth.'],
+['i','watoner','ワトナー：牢屋にとらわれた少女。','WATONER: the girl locked in the cage.'],
+['i','numelin','ヌメリン：桃色の追跡者。キセキを食べる。','NUMELIN: the pink chaser, eats your trajectory.'],
+['i','waiting','待機ヌメリン：紫。通路をふさいで待つ。','WAITING NUMELIN: purple, it blocks corridors.'],
+['i','trajectory','キセキ：歩いた跡に残る黄色い丸。30点。','TRAJECTORY: the yellow dots you leave. 30 pts.'],
 ['s','目的','GOAL'],
 ['t','信号のスタートから、ゴールの旗を目指す。','Start at the signal, reach the goal flag.'],
 ['t','ゴールすると、残したキセキの数が加算される。','At the goal your trajectory is counted up.'],
@@ -3168,21 +3589,27 @@ var HELP=[
 ['t','ヤツハシを撒くと、どちらもそちらへ急ぐ。','A YATSUHASHI (82HASHI) lures both kinds away.'],
 ['t','食べ終わったヌメリンは速度が2倍になる。','After eating, NUMELIN moves twice as fast.'],
 ['s','マンホール','MANHOLES'],
-['t','通ると蓋が開く。自分が落ちたらゲームオーバー。','Walking over one opens it. Falling in kills you.'],
+['i','hole','通ると蓋が開く。自分が落ちたら終わり。','Walking over one opens it. Falling in kills you.'],
 ['t','動いている待機ヌメリンが落ちると消滅（+1000点）。','A moving WAITING NUMELIN falls in and dies (+1000).'],
 ['t','ヌメリンが落ちると10秒潜って戻ってくる。','NUMELIN hides for 10 seconds, then climbs back.'],
 ['s','道具','ITEMS'],
-['t','金貨は通貨。ツルハシ3枚、キセキの爆弾6枚。','Coins are money: PICKAXE 3, M-BOMB 6.'],
-['t','ツルハシは壁を1枚壊す（-300点）。','A pickaxe breaks one wall (-300).'],
-['t','キセキの爆弾（M-BOMB）はキセキを導火線に爆破する。','M-BOMB burns your trajectory as a fuse.'],
+['i','coin','金貨は通貨。ツルハシ3枚、爆弾6枚。','COIN: money. PICKAXE 3, M-BOMB 6.'],
+['i','pick','ツルハシは壁を1枚壊す（-300点）。','PICKAXE breaks one wall (-300).'],
+['i','bomb','キセキの爆弾はキセキを導火線に爆破する。','M-BOMB burns your trajectory as a fuse.'],
 ['t','撃破+500点、燃えたキセキ1つに30点と50点。','Kill +500, each burned dot gives 30 and 50.'],
 ['t','倒したヌメリンは60秒後、キセキの最後尾に戻る。','NUMELIN returns after 60s at the tail of your trail.'],
-['t','ヤツハシ（82HASHI）は1ゲーム15個。持ち越せる。','15 YATSUHASHI (82HASHI) per game, carried over.'],
+['i','yatsu','ヤツハシは1ゲーム15個。持ち越せる。','82HASHI: 15 per game, carried over.'],
 ['s','ワトナー','WATONER'],
 ['t','牢屋でYESを選ぶと一緒に来る。','Answer YES at the cage and she follows you.'],
 ['t','連れてゴールすると+3000点。','Bring her to the goal for +3000.'],
 ['t','食べられるとLIFEを1つ失い、ゴール時-12000点。','Losing her costs a life and -12000 at the goal.'],
 ['t','食べられている15秒間は逃げる好機。','Those 15 seconds are your chance to escape.'],
+['s','アイドル結成','IDOL DEBUT'],
+['i','heart','ワトナーを7人救うと、ゴール後に舞台が開く。','Save 7 WATONERs and a stage opens after the goal.'],
+['t','7人が衣装と髪型を変えて、踊りながら歌う。','The seven perform in their own costumes and hair.'],
+['t','緑のレーザーと反転フラッシュの演出つき。','Green lasers and inverted flashes light the stage.'],
+['t','15秒後、歓声とともにハートが飛んでくる。','After 15s a heart flies to you with the cheers.'],
+['t','受け取るとライフが1つ増える（1UP）。','Catching it gives you an extra life.'],
 ['s','中断と再開','SAVE & CONTINUE'],
 ['t','面が始まるたびに自動で保存される。','Progress is saved at the start of every stage.'],
 ['t','トップ画面のCONTINUEでその面から再開。','CONTINUE on the title resumes from that stage.'],
@@ -3202,6 +3629,61 @@ var HELP=[
 ['p','燃えたキセキ1つ','FUSE DOT','+80'],
 ['p','ツルハシ使用','PICKAXE USED','-300']
 ];
+function helpIcon(kind,x,y,S){
+  /* 説明書の小さな絵 */
+  if(kind==='lyausken'){drawBoy(x,y,S*0.95,'s');return;}
+  if(kind==='watoner'){drawGirl(x,y,S*0.90,1,'s');return;}
+  if(kind==='numelin'){
+    blob(x,y-S*0.1,S*0.36,now,'rgba(255,60,110,0.9)','rgba(255,150,180,0.9)');
+    ctx.beginPath();ctx.arc(x,y-S*0.1,S*0.10,0,7);
+    ctx.fillStyle='rgba(255,212,0,0.8)';ctx.fill();return;
+  }
+  if(kind==='waiting'){
+    blob(x,y-S*0.1,S*0.34,now*0.7,'rgba(150,80,255,0.9)','rgba(200,160,255,0.9)');return;
+  }
+  if(kind==='trajectory'){
+    ctx.fillStyle=YEL;
+    for(var i=0;i<3;i++){
+      ctx.beginPath();ctx.arc(x-S*0.28+i*S*0.28,y-S*0.1,S*0.10,0,7);ctx.fill();
+    }
+    return;
+  }
+  if(kind==='coin'){
+    ctx.save();ctx.translate(x,y-S*0.1);ctx.scale(0.6,1);
+    ctx.beginPath();ctx.arc(0,0,S*0.32,0,7);ctx.fillStyle='#f2b705';ctx.fill();
+    ctx.strokeStyle='#ffe27a';ctx.lineWidth=1.5;ctx.stroke();ctx.restore();return;
+  }
+  if(kind==='pick'){
+    ctx.strokeStyle=PICK_C;ctx.lineWidth=Math.max(2,S*0.12);ctx.lineCap='round';
+    ctx.beginPath();ctx.moveTo(x+S*0.18,y-S*0.42);ctx.lineTo(x-S*0.05,y+S*0.28);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(x-S*0.34,y-S*0.20);
+    ctx.quadraticCurveTo(x+S*0.02,y-S*0.46,x+S*0.36,y-S*0.16);ctx.stroke();return;
+  }
+  if(kind==='bomb'){
+    ctx.beginPath();ctx.arc(x,y,S*0.30,0,7);
+    ctx.fillStyle='#2a2a33';ctx.fill();
+    ctx.strokeStyle=ink(0.7);ctx.lineWidth=1.4;ctx.stroke();
+    ctx.strokeStyle=BOMB_C;ctx.lineWidth=Math.max(1.4,S*0.08);
+    ctx.beginPath();ctx.moveTo(x+S*0.14,y-S*0.24);
+    ctx.quadraticCurveTo(x+S*0.36,y-S*0.40,x+S*0.28,y-S*0.56);ctx.stroke();
+    ctx.beginPath();ctx.arc(x+S*0.28,y-S*0.58,S*0.10,0,7);
+    ctx.fillStyle=BOMB_C;ctx.fill();return;
+  }
+  if(kind==='yatsu'){
+    blob(x,y-S*0.08,S*0.28,now*1.4,'rgba(255,138,224,0.95)','rgba(255,200,240,0.9)');return;
+  }
+  if(kind==='hole'){
+    ctx.save();ctx.translate(x,y-S*0.05);ctx.scale(1,0.55);
+    ctx.beginPath();ctx.arc(0,0,S*0.34,0,7);
+    ctx.fillStyle='rgba(0,0,0,0.85)';ctx.fill();
+    ctx.strokeStyle=ink(0.6);ctx.lineWidth=2;ctx.stroke();ctx.restore();
+    ctx.save();ctx.translate(x+S*0.34,y-S*0.22);ctx.scale(1,0.55);
+    ctx.beginPath();ctx.arc(0,0,S*0.30,0,7);
+    ctx.fillStyle=ink(0.32);ctx.fill();
+    ctx.strokeStyle=ink(0.6);ctx.lineWidth=1.2;ctx.stroke();ctx.restore();return;
+  }
+  if(kind==='heart'){drawHeart(x,y-S*0.05,S*0.30,'#ff3b6b',1);return;}
+}
 function drawHelp(){
   ctx.fillStyle='#05050c';ctx.fillRect(0,0,W,H);
   var x=PAD+6,y=28+helpScroll,i;
@@ -3227,6 +3709,17 @@ function drawHelp(){
         bt(r[2],x+16,y+14,1,'left',1);
       }
       y+=30;
+    }else if(r[0]==='i'){
+      if(y>-40&&y<H+40){
+        helpIcon(r[1],x+18,y-2,26);
+        ctx.fillStyle='#ffffff';
+        ctx.font='400 13px "Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif';
+        ctx.fillText(r[2],x+44,y-2);
+        ctx.fillStyle='rgba(255,255,255,0.55)';
+        ctx.font='400 11px ui-monospace,"SF Mono",Menlo,monospace';
+        ctx.fillText(r[3],x+44,y+12);
+      }
+      y+=40;
     }else if(r[0]==='t'){
       if(y>-30&&y<H+30){
         ctx.fillStyle='#ffffff';
@@ -3468,6 +3961,7 @@ function drawOverlay(){
     var ln=['TRAJECTORY +'+clearDots,'GOAL +'+GOAL_PT,'TIME +'+tBonus];
     if(girlPen)ln.push('WATONER -'+girlPen);
     else if(GIRL_BONUS&&girl.state==='follow')ln.push('WATONER +'+GIRL_BONUS);
+    if(idolBonus)ln.push('HEART x'+idolBonus+'   1UP');
     ln.push('TOTAL '+total);
     panel(ln,'STAGE CLEAR',true,(girl.state==='follow')?'girl':'solo');
   }
@@ -3591,6 +4085,7 @@ function drawTitle(){
 /* ================= ループ ================= */
 function loop(ts){
   now=ts;dt=Math.min(50,ts-prev||16);prev=ts;
+  if(state==='idol'){update();drawIdol();requestAnimationFrame(loop);return;}
   if(state==='help'){drawHelp();requestAnimationFrame(loop);return;}
   if(state==='title'){drawTitle();requestAnimationFrame(loop);return;}
   if(state==='opening'){update();drawOpening();requestAnimationFrame(loop);return;}
