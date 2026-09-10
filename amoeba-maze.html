@@ -70,12 +70,13 @@ var WARP_LOCK=350;       // ワープ直後の再ワープ禁止時間(ms)
 var WARP2_FROM=5;        // このステージ以降はワープが2組（入口2・出口2）
 var COIN_FROM=4;         // このステージ以降、金貨が出る
 var COIN_BASE=2;         // COIN_FROM での枚数
+var COIN_MAX=10;         // 金貨の最大枚数
 var PICK_COST_COIN=3;    // ツルハシ1本の値段（コイン）
 var BOMB_COST_COIN=6;    // 爆弾1個の値段（コイン）
 var OPEN_MS=7000;        // オープニング曲の長さ(ms)
 var LIVES=3;             // 1ゲームで使えるLIFEの数（面をまたいで共通）
 var BOMB_FROM=5;         // このステージ以降、爆弾が1つ置かれる
-var BOMB_PT=500;         // アメーバ破壊の得点
+var BOMB_PT=2000;        // ヌメリン破壊の得点
 var BOMB_WAIT=60000;     // 破壊されたアメーバが復活するまで(ms)
 var FUSE_MS=1300;        // 導火線が燃えきるまで(ms)
 var FUSE_PT=50;          // 導火線として燃えた黄色い丸1つの点数
@@ -1104,14 +1105,15 @@ function placeBlockers(){
   var d=bfs(pc.r,pc.c),cand=[],r,c;
   for(r=0;r<ROWS;r++)for(c=0;c<COLS;c++){
     if(d[r][c]<3) continue;
-    if(r===goal.r&&c===goal.c) continue;
-    if(r===jail.r&&c===jail.c) continue;
+    if(isUsed(r,c)) continue;
     cand.push({r:r,c:c});
   }
   shuffle(cand);
-  for(var i=0;i<n&&i<cand.length;i++)
+  for(var i=0;i<n&&i<cand.length;i++){
     blockers.push({r:cand[i].r,c:cand[i].c,ph:Math.random()*9000,per:6200+Math.random()*3000,op:2600,
                    mode:'idle',path:null,pi:0,prog:0,target:null,look:0,eatT:0,wdir:null});
+    markUsed(cand[i].r,cand[i].c);
+  }
 }
 function blockerPos(b){
   if(b.mode==='wander'){
@@ -1294,18 +1296,29 @@ function placeJail(){
   girl={state:'caged',x:p.x,y:p.y,eater:null,eatT:0,face:'s'};
   askLock=false;
 }
+var used={};
+function useKey(r,c){return r+','+c;}
+function markUsed(r,c){used[useKey(r,c)]=1;}
+function isUsed(r,c){return !!used[useKey(r,c)];}
+function resetUsed(){
+  used={};
+  markUsed(start.r,start.c);
+  markUsed(goal.r,goal.c);
+}
 function placeHoles(){
   holes=[];
   var n=Math.min(HOLE_MAX,stage+1);
   var d=bfs(start.r,start.c),cand=[],r,c;
   for(r=0;r<ROWS;r++)for(c=0;c<COLS;c++){
     if(d[r][c]<2)continue;
-    if(r===goal.r&&c===goal.c)continue;
-    if(r===jail.r&&c===jail.c)continue;
+    if(isUsed(r,c))continue;
     cand.push({r:r,c:c});
   }
   shuffle(cand);
-  for(var i=0;i<n&&i<cand.length;i++) holes.push({r:cand[i].r,c:cand[i].c,open:0});
+  for(var i=0;i<n&&i<cand.length;i++){
+    holes.push({r:cand[i].r,c:cand[i].c,open:0});
+    markUsed(cand[i].r,cand[i].c);
+  }
   holeFx=[];aHoleCool=0;
 }
 function inBed(r,c){return !!bed&&r>=bed.r0&&r<=bed.r1&&c>=bed.c0&&c<=bed.c1;}
@@ -1355,13 +1368,13 @@ function placeBomb(){
   var d=bfs(start.r,start.c),cand=[],r,c;
   for(r=0;r<ROWS;r++)for(c=0;c<COLS;c++){
     if(d[r][c]<3)continue;
-    if(r===goal.r&&c===goal.c)continue;
-    if(r===jail.r&&c===jail.c)continue;
+    if(isUsed(r,c))continue;
     cand.push({r:r,c:c});
   }
   if(!cand.length)return;
   var b=cand[(Math.random()*cand.length)|0];
   bomb={r:b.r,c:b.c,got:0};
+  markUsed(b.r,b.c);
 }
 function openShop(){
   if(state!=='playing')return;
@@ -1410,16 +1423,18 @@ function explode(){
 function placeCoins(){
   coins=[];
   if(stage<COIN_FROM)return;
-  var n=COIN_BASE+(stage-COIN_FROM);
+  var n=Math.min(COIN_MAX,COIN_BASE+(stage-COIN_FROM));
   var d=bfs(start.r,start.c),cand=[],r,c;
   for(r=0;r<ROWS;r++)for(c=0;c<COLS;c++){
     if(d[r][c]<2)continue;
-    if(r===goal.r&&c===goal.c)continue;
-    if(r===jail.r&&c===jail.c)continue;
+    if(isUsed(r,c))continue;
     cand.push({r:r,c:c});
   }
   shuffle(cand);
-  for(var i=0;i<n&&i<cand.length;i++) coins.push({r:cand[i].r,c:cand[i].c,got:0});
+  for(var i=0;i<n&&i<cand.length;i++){
+    coins.push({r:cand[i].r,c:cand[i].c,got:0});
+    markUsed(cand[i].r,cand[i].c);
+  }
 }
 function gateAt(r,c,d){
   for(var i=0;i<gates.length;i++){
@@ -1459,7 +1474,9 @@ function newStage(){
   placeBed();
   genMaze();
   placeWarps();
+  resetUsed();
   placeJail();
+  markUsed(jail.r,jail.c);
   placeCoins();
   placeBomb();
   placeHoles();
@@ -3746,15 +3763,16 @@ var HELP=[
 ['t','1ゲームに3つ。面をまたいで共通。','Three per game, shared across stages.'],
 ['t','0になるとゲームオーバー。記録が残る。','At zero the run ends and your score is recorded.'],
 ['s','得点表','SCORING'],
-['p','キセキ','TRAJECTORY','30'],
-['p','ゴール','GOAL','200'],
-['p','タイムボーナス','TIME LEFT','0-1000'],
-['p','ワトナーを連れてゴール','WATONER SAVED','+3000'],
-['p','ワトナーを失う','WATONER LOST','-12000'],
-['p','待機ヌメリンを穴に落とす','NUMELIN IN HOLE','+1000'],
-['p','爆弾でヌメリンを倒す','BOMB KILL','+500'],
-['p','燃えたキセキ1つ','FUSE DOT','+80'],
-['p','ツルハシ使用','PICKAXE USED','-300']
+['p','キセキ','TRAJECTORY',''+DOT_PT],
+['p','ゴール','GOAL',''+GOAL_PT],
+['p','タイムボーナス','TIME LEFT','0-'+TIME_MAX],
+['p','ワトナーを連れてゴール','WATONER SAVED','+'+GIRL_BONUS],
+['p','ワトナーを失う','WATONER LOST','-'+GIRL_PENALTY],
+['p','待機ヌメリンを穴に落とす','NUMELIN IN HOLE','+'+HOLE_PT],
+['p','爆弾でヌメリンを倒す','BOMB KILL','+'+BOMB_PT],
+['p','燃えたキセキ1つ','FUSE DOT','+'+(DOT_PT+FUSE_PT)],
+['p','ツルハシ使用','PICKAXE USED','-'+PICK_COST],
+['p','ハート1個','HEART','1UP']
 ];
 function helpIcon(kind,x,y,S){
   /* 説明書の小さな絵 */
