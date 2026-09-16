@@ -43,6 +43,10 @@ var SPD_RAMP=1/30;       // 30秒ごとに+1倍
 var SPD_MAX=4.5;         // 速さの上限倍率
 var SPD_STAGE=0.08;      // ステージごとの初速アップ
 var IDLE_LIMIT=10;       // 無操作でゲームオーバーになる秒数
+var NIGHT_FROM=8;        // このステージ以降、1分ごとに真夜中になる
+var NIGHT_FADE=3000;     // 暗くなるまで(ms)
+var NIGHT_MS=20000;      // 真っ暗な時間(ms)
+var NIGHT_SPD=0.70;      // 待機ヌメリンの追跡速度（プレイヤー比）
 var SHIFT_FROM=3;        // このステージ以降、迷路が変形する
 var SHIFT_EVERY=60000;   // 変形の間隔(ms)
 var SHIFT_EDGES=3;       // 一度に消える壁／できる壁の数
@@ -99,6 +103,10 @@ var GIRL_EAT=15000;      // 少女が食べられている時間(ms)
 var GIRL_PENALTY=12000;  // 少女を失った状態でゴールした時の減点
 var GIRL_BONUS=3000;     // 少女を連れてゴールした時の加点
 var GIRL_GAP=0.75;       // 少女が付いてくる距離（セル比）
+var GIRL_GAP2=1.55;      // 2人目が付いてくる距離
+var TWIN_FROM=11;        // このステージ以降、2人収監されることがある
+var TWIN_RATE=0.25;      // その確率
+var CAT_RATE=1/3;        // 2人目が猫のお面をかぶっている確率
 
 /* ---- ステージごとの画面色（PANTONE 近似 HEX）---- */
 var TITLE_BG='#000ADA';     // トップ画像の地色
@@ -122,7 +130,7 @@ var PAL=[
   '#C79674',  // 9面 4035 C
   '#64CCC9'   // 10面 325 C
 ];
-var BG='#000000',BG_OUT='#000000',INKRGB=[255,255,255],SCRIM='rgba(0,0,0,0.86)',DARKBG=true;
+var BG='#000000',BG_OUT='#000000',INK_HEX='#ffffff',INKRGB=[255,255,255],SCRIM='rgba(0,0,0,0.86)',DARKBG=true;
 var YEL='#ffd400',RED='#ff3c6e',RED_L='#ffaabf',VIO='#a06bff',VIO_L='#d2b4ff',
     PNK='#ff8ae0',PNK_L='#ffd2f5',ORG='#ffa23c',ORG_L='#ffc878',CYA='#50f0ff',
     SIG_R='#ff2d9e',SIG_Y='#e8ff00',SIG_G='#3cff88',FLAG='#ff2d4d',FLAG_L='#ff96aa';
@@ -164,6 +172,7 @@ function setPalette(isTitle){
   var c=hexRGB(BG),lum=(0.299*c[0]+0.587*c[1]+0.114*c[2])/255;
   DARKBG=lum<0.55;
   INKRGB=DARKBG?[255,255,255]:[0,0,0];
+  INK_HEX=DARKBG?'#ffffff':'#000000';
   SCRIM=DARKBG?'rgba(0,0,0,0.86)':ink(0.90);
   YEL  =DARKBG?'#ffd400':'#8a5a00';
   RED  =DARKBG?'#ff3c6e':'#b00034';  RED_L=DARKBG?'#ffaabf':'#ff7d9c';
@@ -189,11 +198,85 @@ var wallet=0,coinPressed=false,buyKind='';
 var pops=[],pauseBtn={},pauseDownT=0,pausePressed=false;
 var tallyT=0,tallyFrom=0,tallyN=0,tallyDone=0,tallyTick=0,tallyLast=-1,girlCheerT=0;
 var savedGirls=0,idolNext=IDOL_N,idolShow=0,idolN=IDOL_N,idolRowsCache=null;
+var tipFx=[];
+var getList=[],getIdx=0,getT=0,pendIdol=false;
+var GET_MS=2600;
+function getSfx(fresh){
+  if(!audioOK())return;
+  var f=fresh?[880,1174,1568,2093]:[784,988,1319];
+  f.forEach(function(v,i){
+    setTimeout(function(){beep(v,i===f.length-1?0.35:0.1,0.055,'triangle');},i*110);
+  });
+}
+function getBtn(){var w=W*0.46,h=Math.max(34,H*0.055);return {x:(W-w)/2,y:H*0.865,w:w,h:h};}
+function nextGetRare(){          // NEXTを押すまで待つ
+  if(now-getT<350)return;
+  getIdx++;
+  if(getIdx<getList.length){getT=now;getSfx(getList[getIdx].fresh);return;}
+  getList=[];
+  if(pendIdol){pendIdol=false;startIdol(false,idolNext);}
+  else clearStage();
+}
+function updateGetRare(){}
+function drawGetRare(){
+  var R=rareById(getList[getIdx]?getList[getIdx].id:'cat');
+  var fresh=getList[getIdx]?getList[getIdx].fresh:false;
+  var el=now-getT,k=Math.min(1,el/260);
+  ctx.fillStyle='rgba(0,0,0,0.88)';ctx.fillRect(0,0,W,H);
+  /* きらめき */
+  var i,cx=W/2,cy=H*0.44;
+  for(i=0;i<16;i++){
+    var a=(i/16)*Math.PI*2+now*0.0012;
+    var rr=H*0.10+Math.abs(Math.sin(now*0.003+i))*H*0.10;
+    ctx.fillStyle='rgba(255,212,0,'+(0.25+0.35*Math.abs(Math.sin(now*0.004+i)))+')';
+    ctx.beginPath();ctx.arc(cx+Math.cos(a)*rr*1.6,cy+Math.sin(a)*rr,3.5,0,7);ctx.fill();
+  }
+  ctx.fillStyle='#ffd400';
+  bt(fresh?'NEW WATONER!':'WATONER GET!',W/2,H*0.20,4,'center',2);
+  /* 大きく表示 */
+  var sc=0.6+0.4*(k*k*(3-2*k));
+  var pop2=1+Math.sin(now*0.006)*0.03;
+  rareOv=R;
+  drawGirl(cx,cy+H*0.10,H*0.30*sc*pop2,1,'s');
+  rareOv=null;
+  ctx.textAlign='center';ctx.textBaseline='alphabetic';
+  ctx.fillStyle='#ffffff';
+  ctx.font='700 26px "Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif';
+  ctx.fillText(R.ja,W/2,H*0.66);
+  ctx.fillStyle='rgba(255,255,255,0.75)';
+  bt(R.en,W/2,H*0.70,3,'center',2);
+  if(fresh){
+    ctx.fillStyle='#3cff88';
+    bt('ADDED TO YOUR ROSTER',W/2,H*0.755,2,'center',2);
+    ctx.fillStyle='rgba(255,255,255,0.6)';
+    bt('COLLECTED  '+ownedList().length+' / '+RARE.length,W/2,H*0.79,2,'center',2);
+  }else{
+    ctx.fillStyle='rgba(255,255,255,0.6)';
+    bt('ALREADY IN YOUR ROSTER',W/2,H*0.755,2,'center',2);
+  }
+  if(getList.length>1){
+    ctx.fillStyle='rgba(255,255,255,0.5)';
+    bt((getIdx+1)+' / '+getList.length,W/2,H*0.825,2,'center',2);
+  }
+  var gb=getBtn(),pul2=0.5+0.5*Math.sin(now*0.005);
+  rrect(gb.x,gb.y,gb.w,gb.h,gb.h*0.42);
+  ctx.fillStyle='rgba(255,212,0,'+(0.16+0.12*pul2)+')';ctx.fill();
+  ctx.strokeStyle='rgba(255,212,0,'+(0.8+0.2*pul2)+')';ctx.lineWidth=1.8;ctx.stroke();
+  ctx.fillStyle='#ffd400';
+  bt((getIdx<getList.length-1)?'NEXT':'NEXT',gb.x+gb.w/2,gb.y+gb.h/2+7,3,'center',2);
+}
+function tipBtn(){var w=W*0.44,h=Math.max(30,H*0.048);return {x:(W-w)/2,y:H*0.90,w:w,h:h};}
+function throwTip(){
+  if(wallet<=0){beep(150,0.08,0.04,'square');return;}
+  wallet--;tipCoins++;
+  tipFx.push({t:now,x:W/2+(Math.random()*60-30)});
+  beep(1200+Math.random()*300,0.06,0.04,'triangle');
+}
 var idolT=0,introT=0,musicT=0,heartT=0,heartGot=0,idolSlots=[],idolAnim=[],idolSwapT=0,idolBonus=0,idolDemo=false;
 function pop(x,y,txt,col){pops.push({x:x,y:y,t:now,txt:txt,c:col||'#ffd400'});}
 var grid=[],start={r:0,c:0},goal={r:0,c:0};
 var state='title';
-var stage=1,total=0,score=0,tBonus=TIME_MAX,clearDots=0,overScore=0;
+var stage=1,total=0,score=0,tBonus=TIME_MAX,clearDots=0,overScore=0,bonusShown=0;
 var dots=[],pc={r:0,c:0},dir=null,prog=0,held=null,px=0,py=0;
 var amoeba=0,amoebaOn=false,amoebaT=0,lastEaten=-1;
 var blockers=[];
@@ -225,9 +308,40 @@ function drawTitleArt(){
   }catch(e){return false;}
 }
 var lives=LIVES,canRetry=false;
-var face='s',jail={r:0,c:0},girl={state:'caged',x:0,y:0,eater:null,eatT:0,face:'s'},hist=[],askLock=false,askT=0,girlPen=0;
+var face='s',jail={r:0,c:0},jail2=null;
+var girl={state:'caged',x:0,y:0,eater:null,eatT:0,face:'s',lock:false,cat:false};
+var girl2={state:'none',x:0,y:0,eater:null,eatT:0,face:'s',lock:false,cat:false};
+var hist=[],askLock=false,askT=0,girlPen=0,askWho=1,catMembers=0,catOv=false;
+/* ===== レアなワトナー ===== */
+var RARE=[
+ {id:'cat',   ja:'猫のお面',    en:'CAT MASK',  dress:'#ffffff', hair:0,  mask:1},
+ {id:'bald',  ja:'坊主',        en:'SHAVED',    dress:'#ffe0a8', hair:-1},
+ {id:'swim',  ja:'水着',        en:'SWIMSUIT',  dress:'#ff5f8d', hair:0,  swim:1},
+ {id:'afro',  ja:'アフロ',      en:'AFRO',      dress:'#ffcf3a', hair:3},
+ {id:'long',  ja:'ロングヘア',  en:'LONG HAIR', dress:'#b06bff', hair:2},
+ {id:'skate', ja:'スケボー',    en:'SKATER',    dress:'#5ad1ff', hair:1,  board:1},
+ {id:'kaiju', ja:'怪獣',        en:'KAIJU',     dress:'#4fbf5a', hair:-1, kaiju:1},
+ {id:'stripe',ja:'ストライプ',  en:'STRIPES',   dress:'#ffffff', hair:0,  vstripe:1},
+ {id:'witch', ja:'魔女',        en:'WITCH',     dress:'#2b2b4a', hair:2,  hat:1},
+ {id:'afro2', ja:'アフロ横縞',  en:'AFRO TEE',  dress:'#ffffff', hair:3,  hstripe:1}
+];
+function rareById(id){for(var i=0;i<RARE.length;i++)if(RARE[i].id===id)return RARE[i];return null;}
+var rareOv=null;                       // 描画中のレア設定
+var owned={},team=[],tipCoins=0,tipBoost=0;
+var RARE_BASE=0.14;                    // レアが出る基本の確率
+function ownedList(){var a=[];for(var i=0;i<RARE.length;i++)if(owned[RARE[i].id])a.push(RARE[i].id);return a;}
+function rareChance(){return Math.min(0.6,RARE_BASE+tipBoost);}
+function twinChance(){return Math.min(0.85,TWIN_RATE+tipBoost);}
+function rollRare(){
+  if(Math.random()>=rareChance())return null;
+  return RARE[(Math.random()*RARE.length)|0].id;
+}
+function girlsAll(){return girl2.state==='none'?[girl]:[girl,girl2];}
+function anyFollow(){return girl.state==='follow'||girl2.state==='follow';}
+function rearFollower(){return (girl2.state==='follow')?girl2:((girl.state==='follow')?girl:null);}
 var aMode='trail',aPath=null,aPi=0,aProg=0,aTarget=null,aEatT=0,aLook=0,aBackIdx=0,aFreeze=null,aBoost=1;
 var cdT=0,cdLast=-1,playT=0,idleT=0,endT=0,shiftAt=0,overMsg='',readyT=0,nextBtn={};
+var nightT=0,nightK=0,nightFlash=0;
 var animRem=[],animAdd=[],animSkip={},shiftT=0,shiftApplied=true,shiftCrashed=true,pendGoal=null;
 var now=0,dt=16,prev=0;
 
@@ -665,6 +779,91 @@ function technoTrack(V){
   V.noise(endT,2.1,0.12,3200);
   V.noise(endT,1.0,0.06,300,'lowpass');
 }
+/* 船の汽笛（1.5秒） */
+function hornSfx(){
+  if(!audioOK())return;
+  try{
+    var t0=ac.currentTime+0.02,D=1.5;
+    [55,82.5,110,165].forEach(function(f,i){
+      var o=ac.createOscillator(),g=ac.createGain();
+      o.type=(i<2)?'sawtooth':'triangle';
+      o.frequency.setValueAtTime(f*0.98,t0);
+      o.frequency.linearRampToValueAtTime(f,t0+0.35);
+      g.gain.setValueAtTime(0.0001,t0);
+      g.gain.exponentialRampToValueAtTime(0.11/(i+1),t0+0.25);
+      g.gain.setValueAtTime(0.11/(i+1),t0+D*0.65);
+      g.gain.exponentialRampToValueAtTime(0.0001,t0+D);
+      o.connect(g);g.connect(mg);o.start(t0);o.stop(t0+D+0.05);
+    });
+    var n=Math.floor(ac.sampleRate*D),b=ac.createBuffer(1,n,ac.sampleRate),d=b.getChannelData(0);
+    for(var i2=0;i2<n;i2++){var t=i2/n;d[i2]=(Math.random()*2-1)*Math.min(1,t*5)*(1-t*0.8);}
+    var src=ac.createBufferSource();src.buffer=b;
+    var lp=ac.createBiquadFilter();lp.type='lowpass';lp.frequency.value=700;
+    var g2=ac.createGain();g2.gain.value=0.05;
+    src.connect(lp);lp.connect(g2);g2.connect(mg);src.start(t0);
+  }catch(e){}
+}
+/* 真夜中の曲（約20秒・焦りをあおる） */
+var nightRetry=0;
+function nightMusic(){
+  if(musicOn)return;
+  if(!audioInit())return;
+  if(ac.state!=='running'){
+    try{ac.resume();}catch(e){}
+    if(nightRetry++<40)setTimeout(function(){if(nightT)nightMusic();},100);
+    return;
+  }
+  nightRetry=0;musicStop();
+  try{
+    var t0=ac.currentTime+0.05,BPM=168,B=60/BPM,S16=B/4;
+    musicGain=ac.createGain();musicGain.gain.value=1;musicGain.connect(mg);musicOn=true;
+    var nlen=Math.floor(ac.sampleRate*0.25),nbuf=ac.createBuffer(1,nlen,ac.sampleRate),nd=nbuf.getChannelData(0);
+    for(var q=0;q<nlen;q++)nd[q]=Math.random()*2-1;
+    function noise(st,dur,vol,hz,type){
+      var src=ac.createBufferSource();src.buffer=nbuf;
+      var f=ac.createBiquadFilter();f.type=type||'highpass';f.frequency.value=hz;
+      var g=ac.createGain();
+      g.gain.setValueAtTime(vol,t0+st);
+      g.gain.exponentialRampToValueAtTime(0.0001,t0+st+dur);
+      src.connect(f);f.connect(g);g.connect(musicGain);
+      src.start(t0+st);src.stop(t0+st+dur+0.02);
+    }
+    function tone(type,f,st,dur,vol,f2){
+      var o=ac.createOscillator(),g=ac.createGain();
+      o.type=type;o.frequency.setValueAtTime(f,t0+st);
+      if(f2)o.frequency.exponentialRampToValueAtTime(f2,t0+st+dur);
+      g.gain.setValueAtTime(0.0001,t0+st);
+      g.gain.exponentialRampToValueAtTime(vol,t0+st+0.008);
+      g.gain.exponentialRampToValueAtTime(0.0001,t0+st+dur);
+      o.connect(g);g.connect(musicGain);
+      o.start(t0+st);o.stop(t0+st+dur+0.02);
+    }
+    /* 半音でぶつかる2音と、走る低音 */
+    var bars=14,i2,b2;
+    var low=[49.00,51.91,49.00,46.25];        // G1 G#1 G1 F#1
+    for(b2=0;b2<bars;b2++){
+      var bt0=b2*4*B;
+      for(i2=0;i2<8;i2++){
+        var st=bt0+i2*B/2;
+        tone('sawtooth',low[b2%4],st,B*0.36,0.15);
+        tone('sawtooth',low[b2%4]*2,st,B*0.20,0.06);
+      }
+      for(i2=0;i2<4;i2++){
+        tone('sine',120,bt0+i2*B,0.12,0.30,40);
+        noise(bt0+i2*B+B*0.5,0.05,0.05,6000);
+      }
+      /* 不協和な刻み（短2度） */
+      for(i2=0;i2<4;i2++){
+        var st2=bt0+i2*B;
+        tone('square',392.00,st2,B*0.30,0.045);
+        tone('square',415.30,st2+S16,B*0.26,0.045);
+      }
+      /* 1小節ごとに半音ずつ上がる警告音 */
+      tone('triangle',784.00*Math.pow(2,(b2%6)/12),bt0+B*3,B*0.9,0.055);
+      if(b2%4===3)noise(bt0+B*3,0.5,0.07,2500);
+    }
+  }catch(e){}
+}
 /* 照明が入る瞬間の音 */
 function lightSfx(){
   if(!audioOK())return;
@@ -808,7 +1007,7 @@ function saveGame(){
     window.localStorage.setItem(SAVE_KEY,JSON.stringify({
       v:1,stage:stage,total:total,lives:lives,wallet:wallet,
       lure:lureStock,girls:savedGirls,hearts:idolBonus,
-      next:idolNext,show:idolShow,n:playerName,t:Date.now()
+      next:idolNext,show:idolShow,cats:catMembers,n:playerName,t:Date.now()
     }));
   }catch(e){}
 }
@@ -820,6 +1019,19 @@ function readSave(){
   return null;
 }
 function clearSave(){try{window.localStorage.removeItem(SAVE_KEY);}catch(e){}}
+var DEX_KEY='amoebamaze_dex';
+function saveDex(){
+  try{window.localStorage.setItem(DEX_KEY,JSON.stringify({own:ownedList(),team:team}));}catch(e){}
+}
+function loadDex(){
+  try{
+    var j=JSON.parse(window.localStorage.getItem(DEX_KEY));
+    if(j){
+      owned={};(j.own||[]).forEach(function(k){if(rareById(k))owned[k]=1;});
+      team=(j.team||[]).filter(function(k){return rareById(k);});
+    }
+  }catch(e){}
+}
 function continueGame(){
   var j=saveInfo;
   if(!j)return;
@@ -827,7 +1039,7 @@ function continueGame(){
   wallet=j.wallet||0;
   lureStock=(j.lure===undefined)?LURE_MAX:j.lure;
   savedGirls=j.girls||0;idolBonus=j.hearts||0;
-  idolNext=j.next||IDOL_N;idolShow=j.show||0;
+  idolNext=j.next||IDOL_N;idolShow=j.show||0;catMembers=j.cats||0;
   if(!playerName&&j.n)playerName=j.n;
   canRetry=false;
   newStage();
@@ -1032,6 +1244,34 @@ function allConnected(){
   for(var r=0;r<ROWS;r++)for(var c=0;c<COLS;c++) if(d[r][c]>=0)n++;
   return n===ROWS*COLS-bedCount();
 }
+/* ===== 真夜中タイム ===== */
+function nightOn(){return nightT>0;}
+function startNight(){
+  nightT=now;nightFlash=0;
+  shiftAt=Infinity;
+  hornSfx();
+  nightMusic();
+  for(var i=0;i<blockers.length;i++){
+    var b=blockers[i];
+    if(b.mode==='idle'||b.mode==='wander'){b.mode='hunt';b.path=null;b.pi=0;b.prog=0;b.look=0;b.hlook=0;}
+  }
+}
+function endNight(){
+  nightT=0;nightK=0;
+  musicStop();
+  for(var i=0;i<blockers.length;i++){
+    var b=blockers[i];
+    if(b.mode==='hunt'){b.mode='wander';b.prog=0;b.wdir=null;b.path=null;b.hlook=0;pickWander(b);}
+  }
+  reshape();                      // 明けると同時に壁とゴールが動く
+  shiftAt=now+SHIFT_EVERY;
+}
+function updateNight(){
+  if(!nightT)return;
+  var el=now-nightT;
+  nightK=Math.min(1,el/NIGHT_FADE);
+  if(el>=NIGHT_FADE+NIGHT_MS) endNight();
+}
 function reshape(){
   var prot={},i,r,c;
   var from=amoebaOn?Math.floor(amoeba):0,prev=null;
@@ -1111,7 +1351,7 @@ function placeBlockers(){
   shuffle(cand);
   for(var i=0;i<n&&i<cand.length;i++){
     blockers.push({r:cand[i].r,c:cand[i].c,ph:Math.random()*9000,per:6200+Math.random()*3000,op:2600,
-                   mode:'idle',path:null,pi:0,prog:0,target:null,look:0,eatT:0,wdir:null});
+                   mode:'idle',path:null,pi:0,prog:0,target:null,look:0,hlook:0,eatT:0,wdir:null});
     markUsed(cand[i].r,cand[i].c);
   }
 }
@@ -1122,7 +1362,7 @@ function blockerPos(b){
     var n0=nb({r:b.r,c:b.c},b.wdir),q0=ctr(n0.r,n0.c);
     return {x:a0.x+(q0.x-a0.x)*b.prog,y:a0.y+(q0.y-a0.y)*b.prog};
   }
-  if(b.mode!=='go'||!b.path||!b.path.length) return ctr(b.r,b.c);
+  if((b.mode!=='go'&&b.mode!=='hunt')||!b.path||!b.path.length) return ctr(b.r,b.c);
   var i=Math.min(b.pi,b.path.length-1),a=ctr(b.path[i].r,b.path[i].c);
   if(i<b.path.length-1){
     var q=ctr(b.path[i+1].r,b.path[i+1].c);
@@ -1190,7 +1430,7 @@ function checkHoles(){
   /* 待ち伏せアメーバ：動いている時に落ちたら消滅 */
   for(i=blockers.length-1;i>=0;i--){
     var b=blockers[i];
-    if(b.mode!=='go'&&b.mode!=='wander')continue;
+    if(b.mode!=='go'&&b.mode!=='wander'&&b.mode!=='hunt')continue;
     if(!holeAt(b.r,b.c))continue;
     var bp=blockerPos(b);
     holeFx.push({x:bp.x,y:bp.y,t:now,c:VIO});
@@ -1207,7 +1447,8 @@ function updateBlockers(){
     var b=blockers[i];
     if(b.mode==='eat'&&b.girl){
       if(now-b.eatT>=GIRL_EAT){
-        girl.state='gone';b.girl=false;b.mode='wander';b.prog=0;b.wdir=null;pickWander(b);b.look=now;
+        (function(){var gl2=girlsAll();for(var q2=0;q2<gl2.length;q2++)if(gl2[q2].eater===b)gl2[q2].state='gone';})();
+        b.girl=false;b.mode='wander';b.prog=0;b.wdir=null;pickWander(b);b.look=now;
       }
       continue;
     }
@@ -1235,6 +1476,26 @@ function updateBlockers(){
       }
       continue;
     }
+    if(b.mode==='hunt'){
+      if(!nightT){b.mode='wander';b.prog=0;b.wdir=null;pickWander(b);}
+      else{
+        var tail=(b.path&&b.path.length)?b.path[b.path.length-1]:null;
+        var stale=(!tail||tail.r!==pc.r||tail.c!==pc.c);
+        if(!b.path||(stale&&b.prog<0.06&&now-b.hlook>300)){
+          b.hlook=now;
+          var hp=pathTo({r:b.r,c:b.c},{r:pc.r,c:pc.c});
+          if(hp&&hp.length>1){b.path=hp;b.pi=0;b.prog=0;}
+        }
+        if(b.path&&b.path.length){
+          b.prog+=(SPEED*NIGHT_SPD)*(dt/1000);
+          var hg=0;
+          while(b.prog>=1&&b.pi<b.path.length-1&&hg++<40){
+            b.prog-=1;b.pi++;b.r=b.path[b.pi].r;b.c=b.path[b.pi].c;
+          }
+          if(b.pi>=b.path.length-1)b.prog=0;
+        }
+      }
+    }
     if(b.mode==='wander'){
       if(!b.wdir)pickWander(b);
       if(b.wdir){
@@ -1249,6 +1510,7 @@ function updateBlockers(){
     }
     if(lures.length&&now-b.look>420){
       b.look=now;
+      if(b.mode==='hunt'){b.path=null;b.prog=0;}
       var L=nearestLure(b.r,b.c,BLK_RANGE);
       if(L){
         var p=pathTo({r:b.r,c:b.c},{r:L.r,c:L.c});
@@ -1283,6 +1545,7 @@ function placeWarps(){
   }
 }
 function placeJail(){
+  tipBoost=tipCoins*0.035;tipCoins=0;       // 投げ銭は次の面に効く
   var d=bfs(start.r,start.c),cand=[],r,c;
   for(r=0;r<ROWS;r++)for(c=0;c<COLS;c++){
     if(d[r][c]<4)continue;
@@ -1290,10 +1553,27 @@ function placeJail(){
     cand.push({r:r,c:c});
   }
   if(!cand.length)cand.push({r:goal.r,c:goal.c});
-  var j=cand[(Math.random()*cand.length)|0];
+  shuffle(cand);
+  var j=cand[0];
   jail={r:j.r,c:j.c};
   var p=ctr(jail.r,jail.c);
-  girl={state:'caged',x:p.x,y:p.y,eater:null,eatT:0,face:'s'};
+  girl={state:'caged',x:p.x,y:p.y,eater:null,eatT:0,face:'s',lock:false,cat:false,rare:rollRare()};
+  /* 11面以降、25%の確率でもう1人 */
+  jail2=null;
+  girl2={state:'none',x:0,y:0,eater:null,eatT:0,face:'s',lock:false,cat:false,rare:null};
+  if(stage>TWIN_FROM-1&&Math.random()<twinChance()){
+    for(var i=1;i<cand.length;i++){
+      var q=cand[i];
+      if(Math.abs(q.r-j.r)+Math.abs(q.c-j.c)<4)continue;
+      jail2={r:q.r,c:q.c};
+      var p2=ctr(q.r,q.c);
+      var rr=rollRare();
+      if(!rr&&Math.random()<CAT_RATE)rr='cat';
+      girl2={state:'caged',x:p2.x,y:p2.y,eater:null,eatT:0,face:'s',lock:false,
+             cat:(rr==='cat'),rare:rr};
+      break;
+    }
+  }
   askLock=false;
 }
 var used={};
@@ -1409,8 +1689,12 @@ function explode(){
     pop(a.x,a.y-cell*1.1,'TRAJECTORY '+burned+' +'+(burned*DOT_PT),'#ffd400');
     pop(a.x,a.y-cell*1.9,'FUSE +'+(burned*FUSE_PT),'#ff9a3c');
   }
-  if(girl.state==='eating'&&!girl.eater){      // 食事中を吹き飛ばせば少女は助かる
-    girl.state='follow';girl.x=px;girl.y=py;hist=[{x:px,y:py}];
+  var gl=girlsAll();
+  for(var gi2=0;gi2<gl.length;gi2++){
+    var gg=gl[gi2];
+    if(gg.state==='eating'&&!gg.eater){        // 食事中を吹き飛ばせば助かる
+      gg.state='follow';gg.x=px;gg.y=py;hist=[{x:px,y:py}];
+    }
   }
   amoebaOn=false;aMode='trail';aPath=null;aFreeze=null;aTarget=null;
   amoeba=0;lastEaten=-1;
@@ -1454,6 +1738,7 @@ function doWarp(g2){
   var p=ctr(pc.r,pc.c);px=p.x;py=p.y;
   hist=[{x:px,y:py}];
   if(girl.state==='follow'){girl.x=px;girl.y=py;}
+  if(girl2.state==='follow'){girl2.x=px;girl2.y=py;}
   warpFx.push({x:px,y:py,t:now,c:GATE_COLORS[g2.p%GATE_COLORS.length]});
   beep(880,0.06,0.05,'sine');
   setTimeout(function(){beep(1500,0.07,0.04,'sine');},50);
@@ -1468,6 +1753,7 @@ function doWarp(g2){
 /* ================= ステージ ================= */
 function viewLimit(){return Math.min(VIEW_MAX,VIEW_BASE+(stage-1)*VIEW_STEP);}
 function newStage(){
+  musicStop();                      // 前の面の曲（真夜中など）を必ず止める
   setPalette(false);
   COLS=Math.min(17,11+(stage-1)*2);
   layout();
@@ -1477,6 +1763,7 @@ function newStage(){
   resetUsed();
   placeJail();
   markUsed(jail.r,jail.c);
+  if(jail2)markUsed(jail2.r,jail2.c);
   placeCoins();
   placeBomb();
   placeHoles();
@@ -1490,6 +1777,7 @@ function newStage(){
   picks=(stage>=PICK_FROM)?PICK_MAX2:PICK_MAX;
   aiming=false;pickPressed=false;dirPressed=false;breakFx=[];
   aMode='trail';aPath=null;aPi=0;aProg=0;aTarget=null;aFreeze=null;warpHold=null;
+  nightT=0;nightK=0;nightFlash=0;
   score=0;tBonus=TIME_MAX;
   placeBlockers();
   state='ready';readyT=now;
@@ -1498,7 +1786,8 @@ function newStage(){
 }
 function startGame(){
   stage=1;total=0;lives=LIVES;canRetry=false;lureStock=LURE_MAX;wallet=0;
-  savedGirls=0;idolBonus=0;idolNext=IDOL_N;idolShow=0;idolN=IDOL_N;
+  savedGirls=0;idolBonus=0;idolNext=IDOL_N;idolShow=0;idolN=IDOL_N;catMembers=0;
+  tipCoins=0;tipBoost=0;
   skipBell=true;newStage();skipBell=false;
   state='opening';openT=now;
   musicStart();
@@ -1524,6 +1813,7 @@ function startPlay(){
 }
 function gameOver(msg){
   if(state!=='playing')return;
+  musicStop();
   lives--;
   canRetry=(lives>0);
   overScore=score;
@@ -1535,6 +1825,7 @@ function gameOver(msg){
 /* ゴール：黄色い丸をアメーバ側から数えあげる */
 function startTally(){
   if(state!=='playing')return;
+  musicStop();
   state='tally';tallyT=now;held=null;aiming=false;
   face='s';
   tallyFrom=amoebaOn?Math.min(dots.length,Math.floor(amoeba)+1):0;
@@ -1548,11 +1839,12 @@ function tallyCount(){
 }
 function startIdol(demo,n){
   idolDemo=!!demo;
-  idolN=Math.max(IDOL_N,n||idolNext);
+  idolN=(team.length>=7)?7:Math.max(IDOL_N,n||idolNext);
   idolRowsCache=idolRows(idolN);
-  state='idol';introT=now;idolT=0;musicT=0;heartT=0;heartGot=0;idolSwapT=now;
+  state='idol';introT=now;idolT=0;musicT=0;heartT=0;heartGot=0;idolSwapT=now;tipFx=[];
   idolSlots=[];idolAnim=[];
   for(var i=0;i<idolN;i++){idolSlots.push(i);idolAnim.push({from:i,to:i,t:0});}
+  /* 0番から順に猫のお面。最前列のセンターに立つ */
   held=null;
   idolMusic();                      // 暗いうちから曲は流れている
 }
@@ -1595,6 +1887,8 @@ function updateIdol(){
     var a=(Math.random()<0.6)?((Math.random()*r0[0])|0):((Math.random()*idolN)|0);
     var b=(Math.random()*idolN)|0,g2=0;
     while(b===a&&g2++<10)b=(Math.random()*idolN)|0;
+    /* 猫のお面のメンバーは最前列から動かさない */
+    if(catMembers&&(idolSlots[a]<catMembers||idolSlots[b]<catMembers)){a=b=0;}
     if(a!==b){
       var t=idolSlots[a];idolSlots[a]=idolSlots[b];idolSlots[b]=t;
       idolAnim[idolSlots[a]]={from:b,to:a,t:now};
@@ -1688,15 +1982,21 @@ function drawIdol(){
     ctx.save();ctx.translate(p.x+stepX,p.y+2);ctx.scale(1,0.22);
     ctx.beginPath();ctx.arc(0,0,S*0.055*p.s*(0.9+0.15*bounce),0,7);
     ctx.fillStyle='rgba(0,0,0,0.45)';ctx.fill();ctx.restore();
-    dressOv=IDOL_COLORS[gi%IDOL_COLORS.length];
-    hairOv=gi%3;
+    if(team.length>=7&&gi<team.length){
+      rareOv=rareById(team[gi]);
+      dressOv=null;hairOv=0;catOv=false;
+    }else{
+      dressOv=IDOL_COLORS[gi%IDOL_COLORS.length];
+      hairOv=gi%3;
+      catOv=(gi<catMembers);
+    }
     ctx.save();
     ctx.translate(p.x+stepX,p.y+drop);
     ctx.rotate(lean);
     ctx.scale(1+0.04*(1-bounce),1-0.06*(1-bounce));
     drawGirl(0,0,S*0.15*p.s,1,face2,idolT?((face2==='s')?pose:0):0);
     ctx.restore();
-    dressOv=null;hairOv=0;
+    dressOv=null;hairOv=0;catOv=false;rareOv=null;
   }
   /* 緑のレーザー */
   ctx.save();
@@ -1732,6 +2032,30 @@ function drawIdol(){
     ctx.fillRect(lx,ly,3,10);
     ctx.globalAlpha=1;
   }
+  /* 投げ銭 */
+  if(idolT&&!heartT){
+    var tb=tipBtn();
+    rrect(tb.x,tb.y,tb.w,tb.h,tb.h*0.42);
+    ctx.fillStyle=(wallet>0)?'rgba(242,183,5,0.20)':'rgba(255,255,255,0.05)';ctx.fill();
+    ctx.strokeStyle=(wallet>0)?'#f2b705':'rgba(255,255,255,0.25)';ctx.lineWidth=1.6;ctx.stroke();
+    ctx.fillStyle=(wallet>0)?'#f2b705':'rgba(255,255,255,0.35)';
+    bt('TIP  '+wallet,tb.x+tb.w/2,tb.y+tb.h/2+7,2,'center',1);
+    if(tipCoins){
+      ctx.fillStyle='rgba(255,212,0,0.85)';
+      bt('THROWN '+tipCoins+'   RARE +'+Math.round(tipCoins*3.5)+'%   CAGE +'+Math.round(tipCoins*3.5)+'%',W/2,tb.y-10,1,'center',2);
+    }
+  }
+  for(var ti=tipFx.length-1;ti>=0;ti--){
+    var tf=tipFx[ti],ag=now-tf.t;
+    if(ag>900){tipFx.splice(ti,1);continue;}
+    var tp2=ag/900;
+    var tx=tf.x+(W/2-tf.x)*tp2, ty=H*0.88-tp2*(H*0.88-(oy2+S*0.60))-Math.sin(Math.PI*tp2)*40;
+    ctx.save();ctx.translate(tx,ty);ctx.scale(0.6,1);
+    ctx.beginPath();ctx.arc(0,0,9*(1-tp2*0.3),0,7);
+    ctx.fillStyle='#f2b705';ctx.fill();
+    ctx.strokeStyle='#ffe27a';ctx.lineWidth=1.4;ctx.stroke();
+    ctx.restore();
+  }
   /* 反転のフラッシュ：曲の間に2回だけ */
   if(!heartT&&idolT){
     var el=now-idolT,fl2=false,fi;
@@ -1754,7 +2078,7 @@ function drawIdol(){
   drawBoy(bx,by,34,'n',!!heartT);
   /* 見出しと歌詞的な演出 */
   ctx.fillStyle='rgba(255,212,0,'+(0.25+0.75*lit)+')';
-  bt('WATONER '+idolN,W/2,oy2-16,3,'center',2);
+  bt((team.length>=7)?'NEW WATONERS':('WATONER '+idolN),W/2,oy2-16,3,'center',2);
   if(!idolT){
     ctx.fillStyle='rgba(255,255,255,'+(0.25+0.5*lit)+')';
     bt('...',W/2,oy2+S/2,4,'center',6);
@@ -1784,10 +2108,16 @@ function drawIdol(){
   }
 }
 function clearStage(){
-  if(state!=='playing'&&state!=='tally'&&state!=='idol')return;
+  if(state!=='playing'&&state!=='tally'&&state!=='idol'&&state!=='getrare')return;
   makeConfetti();
-  girlPen=(girl.state==='gone'||girl.state==='eating')?GIRL_PENALTY:0;
-  var bonus=(girl.state==='follow')?GIRL_BONUS:0;
+  var gl4=girlsAll(),saved=0,lost=0;
+  for(var q4=0;q4<gl4.length;q4++){
+    if(gl4[q4].state==='follow')saved++;
+    else if(gl4[q4].state==='gone'||gl4[q4].state==='eating')lost++;
+  }
+  girlPen=lost*GIRL_PENALTY;
+  var bonus=saved*GIRL_BONUS;
+  bonusShown=bonus;
   clearDots=score;
   state='clear';endT=now;
   total+=score+GOAL_PT+tBonus+bonus-girlPen;
@@ -1847,13 +2177,17 @@ function doBuy(kind){
 function resumeFromAsk(){
   var pause=now-askT;
   playT+=pause;amoebaT+=pause;aEatT+=pause;shiftAt+=pause;
+  if(nightT)nightT+=pause;
   if(respawnAt)respawnAt+=pause;
   if(fuse)fuse.t0+=pause;
   if(girl.eatT)girl.eatT+=pause;
   idleT=now;aLook=now;state='playing';
 }
 function rescueGirl(){
-  girl.state='follow';girl.x=px;girl.y=py;hist=[{x:px,y:py}];
+  var g=(askWho===2)?girl2:girl;
+  g.state='follow';g.x=px;g.y=py;
+  if(g===girl&&girl2.state!=='follow')hist=[{x:px,y:py}];
+  if(g===girl2&&girl.state!=='follow')hist=[{x:px,y:py}];
   beep(880,0.1,0.05,'triangle');
   setTimeout(function(){beep(1320,0.16,0.05,'triangle');},110);
 }
@@ -1901,10 +2235,8 @@ function pushHist(){
   var l=hist[hist.length-1];
   if(!l||Math.hypot(px-l.x,py-l.y)>1.5){hist.push({x:px,y:py});if(hist.length>600)hist.shift();}
 }
-function updateGirl(){
-  if(girl.state!=='follow')return;
-  var need=cell*GIRL_GAP,acc=0,i=hist.length-1;
-  var gx=px,gy=py;
+function followPoint(gap){
+  var need=cell*gap,acc=0,i=hist.length-1,gx=px,gy=py;
   while(i>0){
     var a=hist[i],b=hist[i-1],d=Math.hypot(a.x-b.x,a.y-b.y);
     if(acc+d>=need){
@@ -1915,16 +2247,27 @@ function updateGirl(){
     acc+=d;i--;
   }
   if(acc<need&&hist.length){gx=hist[0].x;gy=hist[0].y;}
-  var ddx=gx-girl.x,ddy=gy-girl.y;
+  return {x:gx,y:gy};
+}
+function moveGirl(g,gap){
+  if(g.state!=='follow')return;
+  var q=followPoint(gap);
+  var ddx=q.x-g.x,ddy=q.y-g.y;
   if(Math.abs(ddx)>0.6||Math.abs(ddy)>0.6)
-    girl.face=(Math.abs(ddx)>Math.abs(ddy))?(ddx>0?'e':'w'):(ddy>0?'s':'n');
-  girl.x=gx;girl.y=gy;
+    g.face=(Math.abs(ddx)>Math.abs(ddy))?(ddx>0?'e':'w'):(ddy>0?'s':'n');
+  g.x=q.x;g.y=q.y;
+}
+function updateGirl(){
+  moveGirl(girl,GIRL_GAP);
+  moveGirl(girl2,GIRL_GAP2);
 }
 /* アメーバが追いついた時：少女がいれば先に食べられる */
 function caught(msg,eater){
-  if(girl.state==='follow'){
+  var vic=rearFollower();
+  if(vic){
     /* 食べられ始めた時点でパーティ解散：以後プレイヤーは単独で動く */
-    girl.state='eating';girl.eater=eater||null;girl.eatT=now;
+    vic.state='eating';vic.eater=eater||null;vic.eatT=now;
+    if(vic===girl&&girl2.state==='follow'){girl2.state='gone';}
     hist=[{x:px,y:py}];
     if(!eater){                       // 追跡アメーバはその場に固定する
       var ap=amoebaPos();
@@ -1949,12 +2292,18 @@ function sync(){
   if(dir)face=dir;
   if(state!=='playing')return;
   pushHist();updateGirl();
-  if(girl.state==='caged'&&pc.r===jail.r&&pc.c===jail.c&&!askLock){
-    state='ask';askT=now;held=null;
+  if(girl.state==='caged'&&pc.r===jail.r&&pc.c===jail.c&&!girl.lock){
+    askWho=1;state='ask';askT=now;held=null;
     beep(660,0.1,0.05,'triangle');
     return;
   }
-  if(!(pc.r===jail.r&&pc.c===jail.c))askLock=false;
+  if(jail2&&girl2.state==='caged'&&pc.r===jail2.r&&pc.c===jail2.c&&!girl2.lock){
+    askWho=2;state='ask';askT=now;held=null;
+    beep(660,0.1,0.05,'triangle');
+    return;
+  }
+  if(!(pc.r===jail.r&&pc.c===jail.c))girl.lock=false;
+  if(jail2&&!(pc.r===jail2.r&&pc.c===jail2.c))girl2.lock=false;
   eraseDots();addDots();
   // 追跡アメーバ
   if(amoebaOn){
@@ -1965,7 +2314,7 @@ function sync(){
   for(var i=0;i<blockers.length;i++){
     var b=blockers[i];
     if(b.girl) continue;                       // 少女を食べている個体は当たり判定なし
-    if(b.mode!=='idle'&&b.mode!=='wander'&&b.mode!=='go') continue;
+    if(b.mode!=='idle'&&b.mode!=='wander'&&b.mode!=='go'&&b.mode!=='hunt') continue;
     if(b.mode==='idle'&&blockerOpen(b)>=0.55) continue;
     var bc=blockerPos(b);
     if(Math.hypot(px-bc.x,py-bc.y)<cell*0.31){caught('待機ヌメリンに捕まった',b);return;}
@@ -2253,12 +2602,38 @@ function tap(x,y){
       setTimeout(function(){beep(990,0.14,0.05,'triangle');},90);
       continueGame();return;
     }
+    if(ownedList().length>=7&&inBox(dexBtn(),x,y,8)){
+      beep(820,0.09,0.05,'triangle');state='dex';dexScroll=0;placeNameInput();return;
+    }
     if(inBox(hb,x,y,8)){beep(760,0.09,0.05,'triangle');state='help';helpScroll=0;placeNameInput();return;}
     if(inBox(sb,x,y,8)){beep(880,0.09,0.05,'triangle');startGame();}
     return;
   }
+  if(state==='getrare'){
+    if(x!==undefined&&inBox(getBtn(),x,y,10))nextGetRare();
+    return;
+  }
   if(state==='idol'){
+    if(x!==undefined&&idolT&&!heartT&&inBox(tipBtn(),x,y,8)){throwTip();return;}
     if(idolDemo&&x!==undefined){musicStop();idolDemo=false;beep(400,0.08,0.045,'triangle');toTitle();}
+    return;
+  }
+  if(state==='dex'){
+    if(x===undefined)return;
+    var cb2=closeBtn();
+    if(inBox(cb2,x,y,10)){beep(400,0.08,0.045,'triangle');saveDex();state='title';placeNameInput();return;}
+    var ls=ownedList();
+    for(var di=0;di<ls.length;di++){
+      var bb2=dexCell(di);
+      if(x>=bb2.x&&x<=bb2.x+bb2.w&&y>=bb2.y&&y<=bb2.y+bb2.h){
+        var id=ls[di],at=team.indexOf(id);
+        if(at>=0){team.splice(at,1);beep(320,0.07,0.04,'square');}
+        else if(team.length<7){team.push(id);beep(880,0.07,0.045,'triangle');}
+        else {beep(160,0.09,0.04,'square');}
+        saveDex();
+        break;
+      }
+    }
     return;
   }
   if(state==='help'){
@@ -2314,23 +2689,29 @@ cv.addEventListener('touchstart',function(e){
   e.preventDefault();
   var r=cv.getBoundingClientRect(),t0=e.touches[0];
   if(state==='help'&&t0)helpDragY=t0.clientY-r.top;
+  if(state==='dex'&&t0)dexDragY=t0.clientY-r.top;
   if(t0)tap(t0.clientX-r.left,t0.clientY-r.top); else tap();
-  if(state!=='help')readTouches(e);
+  if(state!=='help'&&state!=='dex')readTouches(e);
 },{passive:false});
 cv.addEventListener('touchmove',function(e){
   e.preventDefault();
-  if(state==='help'){
+  if(state==='help'||state==='dex'){
     var r=cv.getBoundingClientRect(),t0=e.touches[0];
     if(t0){
       var yy=t0.clientY-r.top;
-      if(helpDragY!==null) helpScroll=Math.max(-helpMax,Math.min(0,helpScroll+(yy-helpDragY)));
-      helpDragY=yy;
+      if(state==='help'){
+        if(helpDragY!==null) helpScroll=Math.max(-helpMax,Math.min(0,helpScroll+(yy-helpDragY)));
+        helpDragY=yy;
+      }else{
+        if(dexDragY!==null) dexScroll=Math.max(-dexMax,Math.min(0,dexScroll+(yy-dexDragY)));
+        dexDragY=yy;
+      }
     }
     return;
   }
   readTouches(e);
 },{passive:false});
-cv.addEventListener('touchend',function(e){e.preventDefault();helpDragY=null;readTouches(e);},{passive:false});
+cv.addEventListener('touchend',function(e){e.preventDefault();helpDragY=null;dexDragY=null;readTouches(e);},{passive:false});
 cv.addEventListener('touchcancel',function(e){e.preventDefault();held=null;lurePressed=false;pickPressed=false;dirPressed=false;},{passive:false});
 cv.addEventListener('mousedown',function(e){
   var r=cv.getBoundingClientRect(),x=e.clientX-r.left,y=e.clientY-r.top;
@@ -2402,26 +2783,44 @@ function update(){
       setTimeout(function(){beep(1568,0.16,0.05,'triangle');},110);
     }
     /* 救出できていたら、少女が喜ぶ演出を挟む */
-    if(tallyDone&&!girlCheerT&&girl.state==='follow'&&now-tallyDone>=600){
+    if(tallyDone&&!girlCheerT&&anyFollow()&&now-tallyDone>=600){
       girlCheerT=now;
-      pop(girl.x,girl.y-cell*1.0,'+'+GIRL_BONUS,'#ff8ac0');
+      var gl5=girlsAll();
+      for(var q5=0;q5<gl5.length;q5++)
+        if(gl5[q5].state==='follow')pop(gl5[q5].x,gl5[q5].y-cell*1.0,'+'+GIRL_BONUS,'#ff8ac0');
       beep(1174,0.09,0.05,'triangle');
       setTimeout(function(){beep(1568,0.1,0.05,'triangle');},100);
       setTimeout(function(){beep(2093,0.18,0.05,'triangle');},200);
     }
-    var endAt=(girl.state==='follow')
+    var endAt=anyFollow()
       ? (girlCheerT?girlCheerT+GIRL_CHEER:Infinity)
       : (tallyDone+TALLY_HOLD);
     if(tallyDone&&now>=endAt){
-      if(girl.state==='follow'&&savedGirls+1>=idolNext){
-        savedGirls++;
-        startIdol(false,idolNext);
-      }else{
-        if(girl.state==='follow')savedGirls++;
-        clearStage();
+      var nsv=(girl.state==='follow'?1:0)+(girl2.state==='follow'?1:0);
+      var ncat=(girl.state==='follow'&&girl.cat?1:0)+(girl2.state==='follow'&&girl2.cat?1:0);
+      savedGirls+=nsv;catMembers+=ncat;
+      var gl6=girlsAll();
+      getList=[];
+      for(var q6=0;q6<gl6.length;q6++){
+        var gr=gl6[q6];
+        if(gr.state==='follow'&&gr.rare){
+          getList.push({id:gr.rare,fresh:!owned[gr.rare]});
+          owned[gr.rare]=1;
+        }
       }
+      if(team.length<7){
+        var ow=ownedList();
+        for(var q7=0;q7<ow.length&&team.length<7;q7++)
+          if(team.indexOf(ow[q7])<0)team.push(ow[q7]);
+      }
+      saveDex();
+      pendIdol=!!(nsv&&savedGirls>=idolNext);
+      if(getList.length){getIdx=0;getT=now;state='getrare';getSfx(getList[0].fresh);}
+      else if(pendIdol) startIdol(false,idolNext);
+      else clearStage();
     }
   }
+  if(state==='getrare') updateGetRare();
   if(state==='idol') updateIdol();
   if(state==='opening'&&now-openT>=OPEN_MS) endOpening();
   if(state==='ready'&&(now-readyT)/1000>=viewLimit()){
@@ -2434,6 +2833,7 @@ function update(){
     if(sT>=SH_TOTAL){
       var pause=now-shiftT;
       playT+=pause;amoebaT+=pause;aEatT+=pause;shiftAt+=pause;
+      if(nightT)nightT+=pause;
       if(respawnAt)respawnAt+=pause;
       if(fuse)fuse.t0+=pause;
       idleT=now;aLook=now;
@@ -2445,7 +2845,11 @@ function update(){
     tBonus=Math.max(0,TIME_MAX-Math.floor((now-playT)/1000)*TIME_DEC);
     if(held)idleT=now;
     if((now-idleT)/1000>=IDLE_LIMIT){gameOver('操作が止まった');return;}
-    if(now>=shiftAt){shiftAt=now+SHIFT_EVERY;reshape();}
+    if(now>=shiftAt){
+      if(stage>=NIGHT_FROM&&!nightT) startNight();
+      else {shiftAt=now+SHIFT_EVERY;reshape();}
+    }
+    updateNight();
     step(dt);
     if(state!=='playing')return;
     if(fuse){
@@ -2483,7 +2887,7 @@ function update(){
         /* 潜っている間は何もしない */
       }else if(aMode==='girl'){
         if(now-aEatT>=GIRL_EAT){
-          girl.state='gone';
+          (function(){var gl3=girlsAll();for(var q3=0;q3<gl3.length;q3++)if(gl3[q3].state==='eating'&&!gl3[q3].eater)gl3[q3].state='gone';})();
           var fz=aFreeze,fc=null;
           if(fz){
             var q=cellAt(fz.x,fz.y);
@@ -2618,8 +3022,22 @@ function blob(x,y,R,t,fill,line){
   ctx.closePath();ctx.fillStyle=fill;ctx.fill();
   ctx.strokeStyle=line;ctx.lineWidth=1.2;ctx.stroke();
 }
+function nightMix(hex,k){                 // 暗闇の色へ寄せる
+  var c=hexRGB(hex),o='#';
+  for(var i=0;i<3;i++){
+    var v=Math.round(c[i]*(1-k)+64*k);
+    o+=('0'+Math.max(0,Math.min(255,v)).toString(16)).slice(-2);
+  }
+  return o;
+}
 function drawMaze(){
-  ctx.strokeStyle=ink(1);ctx.lineWidth=Math.max(1.3,cell*0.07);
+  if(nightK>0){                                  // 真夜中の壁は白
+    var wc=hexRGB(INK_HEX||'#ffffff');
+    ctx.strokeStyle='rgb('+Math.round(wc[0]*(1-nightK)+255*nightK)+','+
+                           Math.round(wc[1]*(1-nightK)+255*nightK)+','+
+                           Math.round(wc[2]*(1-nightK)+255*nightK)+')';
+  }else ctx.strokeStyle=ink(1);
+  ctx.lineWidth=Math.max(1.3,cell*0.07);
   ctx.lineCap='round';ctx.lineJoin='round';ctx.beginPath();
   for(var r=0;r<ROWS;r++)for(var c=0;c<COLS;c++){
     var g=grid[r][c],x=ox+c*cell,y=oy+r*cell;
@@ -2664,9 +3082,9 @@ function drawBorder(){
     put(ox-T,oy+i*T,!grid[r][0].w);
   }
   var w=Math.ceil(T)+0.5;
-  ctx.fillStyle=ink(1);
+  ctx.fillStyle=(nightK>0)?'rgba(255,255,255,'+(0.35+0.65*nightK)+')':ink(1);
   for(i=0;i<A.length;i++)ctx.fillRect(A[i][0],A[i][1],w,w);
-  ctx.fillStyle=inkHalf();
+  ctx.fillStyle=(nightK>0)?'rgba(128,128,128,'+(0.35+0.65*nightK)+')':inkHalf();
   for(i=0;i<B.length;i++)ctx.fillRect(B[i][0],B[i][1],w,w);
 }
 function drawShift(){
@@ -3414,13 +3832,76 @@ function drawGirl(x,y,h,scale,face,cheer){
   var w=h*0.5,back=(face==='n'),side=(face==='w'||face==='e'),f=(face==='w')?-1:1;
   if(cheer){back=false;side=false;}
   var hy=y-h*0.40,hr=h*0.19;
-  ctx.fillStyle=dressOv||GIRL_DRESS;             // ドレス（衣装の指定があればそれを使う）
+  var R=rareOv||null;
+  if(R){
+    if(R.hair!==undefined)hairOv=(R.hair<0)?0:R.hair;
+    catOv=!!R.mask;
+  }
+  if(R&&R.board){                                /* スケートボード */
+    ctx.fillStyle='#2b2b33';
+    ctx.fillRect(x-w*0.72,y+h*0.41,w*1.44,h*0.05);
+    ctx.fillStyle='#d8a33a';
+    ctx.beginPath();ctx.arc(x-w*0.45,y+h*0.49,h*0.035,0,7);ctx.fill();
+    ctx.beginPath();ctx.arc(x+w*0.45,y+h*0.49,h*0.035,0,7);ctx.fill();
+  }
+  if(R&&R.kaiju){                                /* しっぽ */
+    ctx.strokeStyle='#2f8f3c';ctx.lineWidth=Math.max(1.5,h*0.09);ctx.lineCap='round';
+    ctx.beginPath();
+    ctx.moveTo(x-w*0.55,y+h*0.30);
+    ctx.quadraticCurveTo(x-w*1.10,y+h*0.16,x-w*0.95,y-h*0.06);
+    ctx.stroke();
+  }
+  ctx.fillStyle=(R?R.dress:(dressOv||GIRL_DRESS));
   ctx.beginPath();
   ctx.moveTo(x-w*(side?0.48:0.66),y+h*0.40);
   ctx.lineTo(x-w*(side?0.22:0.30),y-h*0.20);
   ctx.lineTo(x+w*(side?0.22:0.30),y-h*0.20);
   ctx.lineTo(x+w*(side?0.48:0.66),y+h*0.40);
   ctx.closePath();ctx.fill();
+  if(R&&R.swim){                                 /* 水着：胴を細く、肌を出す */
+    ctx.fillStyle=SKIN;
+    ctx.beginPath();
+    ctx.moveTo(x-w*0.34,y+h*0.40);ctx.lineTo(x-w*0.26,y-h*0.16);
+    ctx.lineTo(x+w*0.26,y-h*0.16);ctx.lineTo(x+w*0.34,y+h*0.40);
+    ctx.closePath();ctx.fill();
+    ctx.fillStyle=R.dress;
+    ctx.fillRect(x-w*0.30,y-h*0.14,w*0.60,h*0.16);
+    ctx.fillRect(x-w*0.30,y+h*0.18,w*0.60,h*0.14);
+  }
+  if(R&&R.vstripe){                              /* 縦ストライプ */
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(x-w*(side?0.48:0.66),y+h*0.40);
+    ctx.lineTo(x-w*(side?0.22:0.30),y-h*0.20);
+    ctx.lineTo(x+w*(side?0.22:0.30),y-h*0.20);
+    ctx.lineTo(x+w*(side?0.48:0.66),y+h*0.40);
+    ctx.closePath();ctx.clip();
+    ctx.fillStyle='#63d2ff';
+    for(var vs=-4;vs<=4;vs++)ctx.fillRect(x+vs*w*0.16,y-h*0.22,w*0.08,h*0.64);
+    ctx.restore();
+  }
+  if(R&&R.hstripe){                              /* 横縞 */
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(x-w*(side?0.48:0.66),y+h*0.40);
+    ctx.lineTo(x-w*(side?0.22:0.30),y-h*0.20);
+    ctx.lineTo(x+w*(side?0.22:0.30),y-h*0.20);
+    ctx.lineTo(x+w*(side?0.48:0.66),y+h*0.40);
+    ctx.closePath();ctx.clip();
+    ctx.fillStyle='#2b2b4a';
+    for(var hs=0;hs<5;hs++)ctx.fillRect(x-w*0.7,y-h*0.18+hs*h*0.12,w*1.4,h*0.06);
+    ctx.restore();
+  }
+  if(R&&R.kaiju){                                /* 背びれ */
+    ctx.fillStyle='#2f8f3c';
+    for(var ks=-1;ks<=1;ks++){
+      ctx.beginPath();
+      ctx.moveTo(x+ks*w*0.22-w*0.07,y-h*0.06);
+      ctx.lineTo(x+ks*w*0.22,y-h*0.26);
+      ctx.lineTo(x+ks*w*0.22+w*0.07,y-h*0.06);
+      ctx.closePath();ctx.fill();
+    }
+  }
   ctx.fillStyle=SKIN;
   if(cheer===2||cheer===3){                    // 片腕を胸の前へ、もう片腕は下ろす
     var up=(cheer===2)?1:-1,dn=-up;
@@ -3444,9 +3925,32 @@ function drawGirl(x,y,h,scale,face,cheer){
     ctx.fillRect(x-w*0.62,y-h*0.16,w*0.26,h*0.26);
     ctx.fillRect(x+w*0.36,y-h*0.16,w*0.26,h*0.26);
   }
-  ctx.fillStyle=back?GIRL_HAIR:SKIN;
+  ctx.fillStyle=(back&&!(R&&R.hair<0))?GIRL_HAIR:SKIN;
   ctx.beginPath();ctx.arc(x,hy,hr,0,7);ctx.fill();
+  if(R&&R.kaiju){                                /* 怪獣の頭 */
+    ctx.fillStyle='#4fbf5a';
+    ctx.beginPath();ctx.arc(x,hy,hr*1.15,0,7);ctx.fill();
+    ctx.fillStyle='#2f8f3c';
+    ctx.beginPath();ctx.arc(x-hr*0.75,hy-hr*0.75,hr*0.38,0,7);ctx.fill();
+    ctx.beginPath();ctx.arc(x+hr*0.75,hy-hr*0.75,hr*0.38,0,7);ctx.fill();
+    ctx.fillStyle='#ffffff';
+    ctx.beginPath();ctx.arc(x-hr*0.34,hy-hr*0.02,hr*0.28,0,7);ctx.fill();
+    ctx.beginPath();ctx.arc(x+hr*0.34,hy-hr*0.02,hr*0.28,0,7);ctx.fill();
+    ctx.fillStyle='#111';
+    ctx.beginPath();ctx.arc(x-hr*0.34,hy,hr*0.13,0,7);ctx.fill();
+    ctx.beginPath();ctx.arc(x+hr*0.34,hy,hr*0.13,0,7);ctx.fill();
+    rareOv=null;hairOv=0;catOv=false;
+    return;
+  }
+  if(R&&R.hair===3){                             /* アフロ */
+    ctx.fillStyle=GIRL_HAIR;
+    ctx.beginPath();ctx.arc(x,hy-hr*0.30,hr*1.62,0,7);ctx.fill();
+    ctx.fillStyle=SKIN;
+    ctx.beginPath();ctx.arc(x,hy+hr*0.12,hr*0.92,0,7);ctx.fill();
+  }
   ctx.fillStyle=GIRL_HAIR;
+  if(R&&R.hair<0){ /* 坊主：髪を描かない */ }
+  else
   if(side){
     /* 横向き：頭頂から後頭部まで髪で覆う（地肌が出ないように） */
     ctx.beginPath();ctx.arc(x,hy-hr*0.06,hr*1.10,Math.PI*0.88,Math.PI*2.12);ctx.fill();
@@ -3476,6 +3980,44 @@ function drawGirl(x,y,h,scale,face,cheer){
       ctx.fillRect(x+hr*0.78,hy-hr*0.5,hr*0.42,hr*1.6);
     }
   }
+  if(R&&R.hat){                                  /* 魔女の帽子 */
+    ctx.fillStyle='#2b2b4a';
+    ctx.beginPath();
+    ctx.ellipse?ctx.ellipse(x,hy-hr*0.85,hr*1.75,hr*0.34,0,0,7):ctx.arc(x,hy-hr*0.85,hr*1.2,0,7);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(x-hr*1.02,hy-hr*0.92);
+    ctx.lineTo(x+hr*0.25,hy-hr*2.60);
+    ctx.lineTo(x+hr*1.02,hy-hr*0.92);
+    ctx.closePath();ctx.fill();
+    ctx.fillStyle='#ffd400';
+    ctx.fillRect(x-hr*0.95,hy-hr*1.22,hr*1.9,hr*0.26);
+  }
+  if(catOv&&!back){                            /* 猫のお面 */
+    var mr=hr*1.00;
+    ctx.fillStyle='#fdf6e6';
+    ctx.beginPath();ctx.arc(x+(side?f*hr*0.16:0),hy+hr*0.06,mr*0.90,0,7);ctx.fill();
+    ctx.fillStyle='#e8ddc4';
+    ctx.beginPath();
+    ctx.moveTo(x-mr*0.72,hy-mr*0.52);ctx.lineTo(x-mr*0.28,hy-mr*1.30);ctx.lineTo(x-mr*0.04,hy-mr*0.46);
+    ctx.closePath();ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(x+mr*0.72,hy-mr*0.52);ctx.lineTo(x+mr*0.28,hy-mr*1.30);ctx.lineTo(x+mr*0.04,hy-mr*0.46);
+    ctx.closePath();ctx.fill();
+    ctx.strokeStyle='#3a2a18';ctx.lineWidth=Math.max(0.8,hr*0.09);ctx.lineCap='round';
+    ctx.beginPath();
+    ctx.moveTo(x-mr*0.86,hy+hr*0.04);ctx.lineTo(x-mr*0.26,hy+hr*0.16);
+    ctx.moveTo(x+mr*0.86,hy+hr*0.04);ctx.lineTo(x+mr*0.26,hy+hr*0.16);
+    ctx.stroke();
+    ctx.fillStyle='#3a2a18';
+    ctx.beginPath();ctx.arc(x-hr*0.30,hy-hr*0.02,Math.max(0.8,hr*0.14),0,7);ctx.fill();
+    ctx.beginPath();ctx.arc(x+hr*0.30,hy-hr*0.02,Math.max(0.8,hr*0.14),0,7);ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(x-hr*0.14,hy+hr*0.24);ctx.lineTo(x+hr*0.14,hy+hr*0.24);ctx.lineTo(x,hy+hr*0.40);
+    ctx.closePath();ctx.fill();
+    if(R){rareOv=null;hairOv=0;catOv=false;}
+    return;
+  }
   if(!back){
     ctx.fillStyle='#222';
     var er=Math.max(0.7,hr*0.16);
@@ -3485,6 +4027,7 @@ function drawGirl(x,y,h,scale,face,cheer){
       ctx.beginPath();ctx.arc(x+hr*0.36,hy+hr*0.10,er,0,7);ctx.fill();
     }
   }
+  if(R){rareOv=null;hairOv=0;catOv=false;}
 }
 function bubble(x,y,txt,col){
   var sc=2,tw=txt.length*22,th=26,c=null;
@@ -3502,9 +4045,15 @@ function bubble(x,y,txt,col){
   pixelText(txt,bx+w/2,by+(h-th)/2,sc,'center','#111111',1);
 }
 function drawJail(){
-  if(girl.state!=='caged')return;
-  var p=ctr(jail.r,jail.c);
+  drawOneJail(girl,jail);
+  if(jail2)drawOneJail(girl2,jail2);
+}
+function drawOneJail(g,j){
+  if(!g||!j||g.state!=='caged')return;
+  var p=ctr(j.r,j.c);
+  rareOv=g.rare?rareById(g.rare):null;
   drawGirl(p.x,p.y+cell*0.06,cell*0.52,1,'s');
+  rareOv=null;
   ctx.strokeStyle=ink(0.85);ctx.lineWidth=Math.max(1.4,cell*0.06);ctx.lineCap='butt';
   for(var i=-1;i<=1;i++){
     ctx.beginPath();
@@ -3519,22 +4068,28 @@ function drawJail(){
   ctx.fillStyle=PICK_C;
   ctx.beginPath();ctx.arc(p.x+cell*0.30,p.y,cell*0.07,0,7);ctx.fill();
 }
-function drawGirlWorld(){
-  if(girl.state==='follow'){
+function drawOneGirl(g){
+  rareOv=g.rare?rareById(g.rare):null;
+  if(g.state==='follow'){
     if(state==='tally'){
       var hop=girlCheerT?Math.abs(Math.sin((now-girlCheerT)/230))*cell*0.34:0;
-      drawGirl(girl.x,girl.y-hop,cell*0.56,1,'s',!!girlCheerT);
-      return;
+      drawGirl(g.x,g.y-hop,cell*0.56,1,'s',!!girlCheerT);
+    }else{
+      drawGirl(g.x,g.y,cell*0.56,1,g.face);
     }
-    drawGirl(girl.x,girl.y,cell*0.56,1,girl.face);
-  }else if(girl.state==='eating'){
-    var e=girl.eater?blockerPos(girl.eater):amoebaPos();
-    var t=Math.min(1,(now-girl.eatT)/GIRL_EAT);
+  }else if(g.state==='eating'){
+    var e=g.eater?blockerPos(g.eater):amoebaPos();
+    var t=Math.min(1,(now-g.eatT)/GIRL_EAT);
     if(e){
       drawGirl(e.x,e.y-cell*0.1,cell*0.56,1-t*0.75,'s');
       if(Math.floor(now/700)%2===0) bubble(e.x,e.y-cell*0.55,'AAAAH!',RED);
     }
   }
+  rareOv=null;
+}
+function drawGirlWorld(){
+  drawOneGirl(girl);
+  if(girl2.state!=='none')drawOneGirl(girl2);
 }
 function drawPlayer(){
   if(state==='tally'){
@@ -3555,6 +4110,22 @@ function drawPlayer(){
     var t=Math.min(1,idle/IDLE_LIMIT);
     ctx.strokeStyle=rgba(RED,0.9);ctx.lineWidth=2.5;
     ctx.beginPath();ctx.arc(px,py,cell*(0.5+0.5*t),-Math.PI/2,-Math.PI/2+Math.PI*2*(1-t));ctx.stroke();
+  }
+}
+function drawNightFlash(){
+  if(!nightT)return;
+  var el=now-nightT;
+  var AT=[NIGHT_FADE+40,NIGHT_FADE+260];
+  for(var i=0;i<AT.length;i++){
+    var d=el-AT[i];
+    if(d>=0&&d<80){
+      ctx.save();
+      ctx.globalCompositeOperation='difference';
+      ctx.globalAlpha=0.5;
+      ctx.fillStyle='#8e8e8e';ctx.fillRect(0,0,W,H);
+      ctx.restore();
+      break;
+    }
   }
 }
 function drawPops(){
@@ -3685,7 +4256,13 @@ function drawHUD(){
   }
   ctx.fillStyle='rgba(255,255,255,0.8)';
   var lt='TIME '+tv;
-  if(state==='playing'&&stage>=SHIFT_FROM&&shiftAt<Infinity)
+  /* この面に囚われているワトナーの数 */
+  var caged=(girl.state==='caged'?1:0)+(girl2.state==='caged'?1:0);
+  if((state==='playing'||state==='ready'||state==='countdown')&&jail2)
+    lt+='  CAGE '+caged+'/2';
+  if(state==='playing'&&nightT)
+    lt+='  MIDNIGHT '+Math.max(0,Math.ceil((nightT+NIGHT_FADE+NIGHT_MS-now)/1000));
+  else if(state==='playing'&&stage>=SHIFT_FROM&&shiftAt<Infinity)
     lt+='  SHIFT '+Math.max(0,Math.ceil((shiftAt-now)/1000));
   bt(lt,pad,yy,2,'left',0);
   if(state==='playing'){
@@ -3753,7 +4330,27 @@ var HELP=[
 ['t','曲はユーロビート、グルーヴ、テクノロックと替わる。','The music rotates: eurobeat, groove, techno rock.'],
 ['t','緑のレーザーと反転フラッシュの演出つき。','Green lasers and inverted flashes light the stage.'],
 ['t','15秒後、歓声とともにハートが飛んでくる。','After 15s a heart flies to you with the cheers.'],
+['t','11面以降、25%でワトナーが2人収監されている。','From stage 11, two WATONERs may be caged (25%).'],
+['t','2人目の3人に1人は猫のお面をかぶっている。','One in three of them wears a cat mask.'],
+['t','猫のお面は最前列センターで踊り、ハートを渡す。','A cat-masked member leads the front row.'],
 ['t','受け取るとライフが1つ増える（1UP）。','Catching it gives you an extra life.'],
+['s','真夜中タイム','MIDNIGHT'],
+['t','8面以降、1分たつと3秒かけて暗闇になる。','From stage 8, darkness falls after one minute.'],
+['t','汽笛が鳴り、迷路は灰色、すべてが暗くなる。','A horn sounds; the maze turns grey and dim.'],
+['t','待機ヌメリンが全員ラウスケンを追ってくる。','Every WAITING NUMELIN hunts you down.'],
+['t','速さはラウスケンの7割。約20秒で夜が明ける。','They move at 70% of your speed. It lasts 20s.'],
+['t','ヤツハシもマンホールもこれまで通り効く。','82HASHI and manholes work exactly as before.'],
+['t','夜が明けると、壁とゴールが動く。','At dawn the walls and the goal shift.'],
+['s','レアなワトナー','RARE WATONERS'],
+['t','まれに変わった姿のワトナーが捕まっている。','Some caged WATONERs wear rare outfits.'],
+['t','連れてゴールすると図鑑に登録される。','Bring one to the goal to add her to your roster.'],
+['t','7人集めるとNEW WATONERSを結成できる。','Collect 7 and you can form NEW WATONERS.'],
+['t','トップ画面のNEW WATONERSで7人を選べる。','Pick your seven from the title screen.'],
+['t','ライブで踊るのは選んだ7人。入れ替え自由。','Those seven perform at every live. Swap anytime.'],
+['s','投げ銭','TIP'],
+['t','ライブ中にTIPを押すとコインを投げられる。','Tap TIP during the live to throw coins.'],
+['t','1枚につき次の面のレア出現率が3.5%上がる。','Each coin adds 3.5% rare odds on the next stage.'],
+['t','2人収監される確率も同じだけ上がる。','The odds of two caged WATONERs rise the same way.'],
 ['s','中断と再開','SAVE & CONTINUE'],
 ['t','面が始まるたびに自動で保存される。','Progress is saved at the start of every stage.'],
 ['t','トップ画面のCONTINUEでその面から再開。','CONTINUE on the title resumes from that stage.'],
@@ -3828,6 +4425,53 @@ function helpIcon(kind,x,y,S){
     ctx.strokeStyle=ink(0.6);ctx.lineWidth=1.2;ctx.stroke();ctx.restore();return;
   }
   if(kind==='heart'){drawHeart(x,y-S*0.05,S*0.30,'#ff3b6b',1);return;}
+}
+/* ===== ワトナー図鑑（NEW WATONERSの編成） ===== */
+var dexScroll=0,dexDragY=null,dexMax=0;
+function dexBtn(){var w=W*0.52,h=Math.max(28,H*0.042);
+  return {x:(W-w)/2,y:(saveInfo?H*0.718:H*0.798),w:w,h:h};}
+function dexCell(i){
+  var cols=2,cw=(W-PAD*2-10)/cols,ch=96;
+  var r=(i/cols)|0,c=i%cols;
+  return {x:PAD+c*(cw+10),y:96+r*(ch+10)+dexScroll,w:cw,h:ch};
+}
+function drawDex(){
+  ctx.fillStyle='#05050c';ctx.fillRect(0,0,W,H);
+  ctx.fillStyle='#ffd400';
+  bt('NEW WATONERS',W/2,34,3,'center',2);
+  ctx.fillStyle='rgba(255,255,255,0.7)';
+  bt('TAP TO PICK 7   ('+team.length+'/7)',W/2,58,2,'center',1);
+  var list=ownedList(),i;
+  for(i=0;i<list.length;i++){
+    var R=rareById(list[i]),b=dexCell(i);
+    if(b.y>H||b.y+b.h<0)continue;
+    var on=team.indexOf(R.id)>=0;
+    rrect(b.x,b.y,b.w,b.h,10);
+    ctx.fillStyle=on?'rgba(255,138,192,0.18)':'rgba(255,255,255,0.06)';ctx.fill();
+    ctx.strokeStyle=on?'#ff8ac0':'rgba(255,255,255,0.25)';ctx.lineWidth=on?2:1;ctx.stroke();
+    rareOv=R;
+    drawGirl(b.x+b.w*0.26,b.y+b.h*0.62,b.h*0.62,1,'s');
+    rareOv=null;
+    ctx.fillStyle='#ffffff';
+    ctx.font='400 12px "Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif';
+    ctx.textAlign='left';ctx.textBaseline='alphabetic';
+    ctx.fillText(R.ja,b.x+b.w*0.46,b.y+b.h*0.46);
+    ctx.fillStyle='rgba(255,255,255,0.6)';
+    bt(R.en,b.x+b.w*0.46,b.y+b.h*0.62,1,'left',1);
+    if(on){
+      ctx.fillStyle='#ff8ac0';
+      bt('IN',b.x+b.w-12,b.y+16,2,'right',1);
+    }
+  }
+  var rows=Math.ceil(list.length/2);
+  dexMax=Math.max(0,96+rows*106-(H-90));
+  var cb=closeBtn();
+  ctx.fillStyle='rgba(5,5,12,0.92)';ctx.fillRect(0,cb.y-14,W,H-cb.y+14);
+  rrect(cb.x,cb.y,cb.w,cb.h,cb.h*0.42);
+  ctx.fillStyle='rgba(255,212,0,0.18)';ctx.fill();
+  ctx.strokeStyle='#ffd400';ctx.lineWidth=1.6;ctx.stroke();
+  ctx.fillStyle='#ffd400';
+  bt('CLOSE',cb.x+cb.w/2,cb.y+cb.h/2+7,3,'center',2);
 }
 function drawHelp(){
   ctx.fillStyle='#05050c';ctx.fillRect(0,0,W,H);
@@ -3963,18 +4607,28 @@ function drawClearScene(cx,gy,h,withGirl){
 }
 function panel(lines,title,withNext,scene){
   var sceneH=scene?70:0;
-  var h=Math.min(H*0.80,86+lines.length*28+(withNext?54:0)+sceneH),y=(H-h)/2;
+  var big=(title==='GAME OVER'||title==='RETRY');   // 大きく出す見出し
+  var tpx=big?5:3,topH=big?34:0;
+  var h=Math.min(H*0.86,86+lines.length*28+(withNext?54:0)+sceneH+topH),y=(H-h)/2;
   ctx.fillStyle='#000000';ctx.fillRect(0,y,W,h);
   if(scene) drawConfetti(0,y,W,h);
   ctx.strokeStyle='rgba(255,255,255,0.35)';ctx.lineWidth=1;
   ctx.beginPath();ctx.moveTo(0,y+0.5);ctx.lineTo(W,y+0.5);
   ctx.moveTo(0,y+h-0.5);ctx.lineTo(W,y+h-0.5);ctx.stroke();
-  ctx.fillStyle='#ffd400';
-  bt(title,W/2,y+46,3,'center',1);
+  if(big){
+    var gl=0.5+0.5*Math.sin(now*0.004);
+    ctx.fillStyle=(title==='GAME OVER')?('rgba(255,77,109,'+(0.75+0.25*gl)+')'):'#ffd400';
+    bt(title,W/2,y+62,tpx,'center',1);
+    ctx.fillStyle='rgba(255,255,255,0.22)';
+    ctx.fillRect(W*0.12,y+78,W*0.76,2);
+  }else{
+    ctx.fillStyle='#ffd400';
+    bt(title,W/2,y+46,tpx,'center',1);
+  }
   if(scene) drawClearScene(W/2,y+46+sceneH-8,Math.min(46,sceneH*0.62),scene==='girl');
   for(var i=0;i<lines.length;i++){
     ctx.fillStyle=(i===lines.length-1)?'rgba(255,255,255,0.75)':'#ffffff';
-    bt(lines[i],W/2,y+78+sceneH+i*28,2,'center',0);
+    bt(lines[i],W/2,y+78+topH+sceneH+i*28,2,'center',0);
   }
   if(withNext){
     var b=nextBtn,pul=0.5+0.5*Math.sin(now*0.006);
@@ -4105,10 +4759,10 @@ function drawOverlay(){
   if(state==='clear'){
     var ln=['TRAJECTORY +'+clearDots,'GOAL +'+GOAL_PT,'TIME +'+tBonus];
     if(girlPen)ln.push('WATONER -'+girlPen);
-    else if(GIRL_BONUS&&girl.state==='follow')ln.push('WATONER +'+GIRL_BONUS);
+    if(bonusShown)ln.push('WATONER +'+bonusShown);
     if(idolBonus)ln.push('HEART x'+idolBonus+'   1UP');
     ln.push('TOTAL '+total);
-    panel(ln,'STAGE CLEAR',true,(girl.state==='follow')?'girl':'solo');
+    panel(ln,'STAGE CLEAR',true,bonusShown?'girl':'solo');
   }
   if(state==='over'){
     if(canRetry) panel([overMsg,'CHANCE '+lives+'/'+LIVES,'TOTAL '+total,'タップでもう一度'],'RETRY');
@@ -4210,6 +4864,15 @@ function drawTitle(){
     bt('SCORE '+(saveInfo.total||0)+'  LIFE '+(saveInfo.lives||0),W/2,cb2.y+cb2.h+13,1,'center',1);
   }
 
+  /* WATONERS（7人集めたら） */
+  if(ownedList().length>=7){
+    var xb=dexBtn();
+    rrect(xb.x,xb.y,xb.w,xb.h,xb.h*0.42);
+    ctx.fillStyle='rgba(255,138,192,0.12)';ctx.fill();
+    ctx.strokeStyle='rgba(255,138,192,0.85)';ctx.lineWidth=1.4;ctx.stroke();
+    ctx.fillStyle=GIRL_DRESS;
+    bt('NEW WATONERS',xb.x+xb.w/2,xb.y+xb.h/2+6,2,'center',1);
+  }
   /* HOW TO PLAY */
   var hb=howBtn();
   rrect(hb.x,hb.y,hb.w,hb.h,hb.h*0.42);
@@ -4230,18 +4893,35 @@ function drawTitle(){
 /* ================= ループ ================= */
 function loop(ts){
   now=ts;dt=Math.min(50,ts-prev||16);prev=ts;
+  if(state==='getrare'){update();drawGetRare();requestAnimationFrame(loop);return;}
   if(state==='idol'){update();drawIdol();requestAnimationFrame(loop);return;}
+  if(state==='dex'){drawDex();requestAnimationFrame(loop);return;}
   if(state==='help'){drawHelp();requestAnimationFrame(loop);return;}
   if(state==='title'){drawTitle();requestAnimationFrame(loop);return;}
   if(state==='opening'){update();drawOpening();requestAnimationFrame(loop);return;}
   update();
   ctx.fillStyle=BG_OUT;ctx.fillRect(0,0,W,H);
-  ctx.fillStyle=BG;ctx.fillRect(ox,oy,COLS*cell,ROWS*cell);
-  drawBed();drawMaze();drawShift();drawGates();drawAim();drawBreakFx();drawStartSignal();drawGoalFlag();drawJail();drawHoles();drawCoins();drawBomb();drawDots();drawLures();drawBlockers();drawAmoeba();drawGirlWorld();drawPlayer();drawBoom();
+  if(nightK>0){                                  // 真夜中は画面全部が真っ黒
+    ctx.fillStyle='rgba(0,0,0,'+nightK+')';
+    ctx.fillRect(0,0,W,H);
+    ctx.fillStyle=(nightK>=1)?'#000000':nightMix(BG,nightK);
+    ctx.fillRect(ox,oy,COLS*cell,ROWS*cell);
+  }else{
+    ctx.fillStyle=BG;ctx.fillRect(ox,oy,COLS*cell,ROWS*cell);
+  }
+  drawBed();
+  if(nightK<=0)drawMaze();
+  drawShift();drawGates();drawAim();drawBreakFx();drawStartSignal();drawGoalFlag();drawJail();drawHoles();drawCoins();drawBomb();drawDots();drawLures();drawBlockers();drawAmoeba();drawGirlWorld();drawPlayer();drawBoom();
+  if(nightK>0){
+    /* キャラクターや道具はそのままの明るさ。白い壁を上に描く */
+    drawMaze();
+    drawBorder();
+    drawNightFlash();
+  }
   drawPops();drawPad();drawPauseBtn();drawHUD();drawOverlay();
   requestAnimationFrame(loop);
 }
-ranks=loadRanks();saveInfo=readSave();
+ranks=loadRanks();loadDex();saveInfo=readSave();
 makeNameInput();
 resize();
 placeNameInput();
