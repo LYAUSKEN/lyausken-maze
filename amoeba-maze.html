@@ -199,7 +199,7 @@ var wallet=0,coinPressed=false,buyKind='';
 var pops=[],pauseBtn={},pauseDownT=0,pausePressed=false;
 var tallyT=0,tallyFrom=0,tallyN=0,tallyDone=0,tallyTick=0,tallyLast=-1,girlCheerT=0;
 var savedGirls=0,idolNext=IDOL_N,idolShow=0,idolN=IDOL_N,idolRowsCache=null;
-var tipFx=[],fieldLive=false,fieldUsed=false,fadeT=0,fieldNotes=[],aCharm=0,fieldT0=0;
+var tipFx=[],fieldLive=false,fieldUsed=false,fadeT=0,fieldNotes=[],aCharm=0,fieldT0=0,goalPending=false;
 var SPAWN_FROM=30,SPAWN_EVERY=5000,BLOCK_CAP=12;
 var spawnAt=0;
 var getList=[],getIdx=0,getT=0,pendIdol=false,pendSolo=null;
@@ -466,6 +466,7 @@ var NOTE={A2:110.0,B2:123.5,C3:130.8,D3:146.8,E3:164.8,F3:174.6,G3:196.0,
           A4:440.0,B4:493.9,C5:523.3,D5:587.3,E5:659.3,F5:698.5,G5:784.0,
           A5:880.0,B5:987.8,C6:1046.5,D6:1174.7,E6:1318.5,G6:1568.0};
 function musicStop(){
+  stopSoloSong();
   musicOn=false;
   if(!musicGain)return;
   try{
@@ -634,6 +635,42 @@ function failSfx(){
   }catch(e){}
 }
 /* ステージの曲。回を追うごとに ユーロビート → ブラックミュージック → テクノロック と変わる */
+/* ===== 自作の歌（音声ファイル）を使う ===== */
+var songEl=null,songOn=false,songLen=0;
+function songCandidates(id){
+  return ['solo-'+id+'.m4a','solo-'+id+'.mp3','solo-song.m4a','solo-song.mp3'];
+}
+function stopSoloSong(){
+  if(songEl){try{songEl.pause();songEl.currentTime=0;}catch(e){}}
+  songOn=false;songLen=0;
+}
+function trySoloSong(id,done){
+  var list=songCandidates(id),i=0;
+  function next(){
+    if(i>=list.length){done(false);return;}
+    var url=list[i++];
+    var a=document.createElement('audio');
+    a.preload='auto';a.src=url;
+    var settled=false;
+    var to=setTimeout(function(){if(!settled){settled=true;next();}},1500);
+    a.addEventListener('error',function(){if(!settled){settled=true;clearTimeout(to);next();}});
+    a.addEventListener('canplaythrough',function(){
+      if(settled)return;settled=true;clearTimeout(to);
+      songEl=a;songOn=true;
+      songLen=(a.duration&&isFinite(a.duration))?a.duration*1000:0;
+      try{a.volume=0.9;a.play();}catch(e){}
+      done(true);
+    });
+  }
+  next();
+}
+function soloMusic(id){
+  stopSoloSong();
+  trySoloSong(id,function(ok){
+    if(!ok) idolMusic();                  // ファイルが無ければ内蔵のバラード
+  });
+}
+function idolLen(){return songOn&&songLen?Math.max(6000,songLen+600):IDOL_MS;}
 var idolRetry=0;
 function idolMusic(){
   if(musicOn)return;
@@ -1458,13 +1495,13 @@ function startFieldLive(){
   soloId=(liveMode!=='group'&&soloDone[liveMode])?liveMode:soloList()[0];
   held=null;
   state='fieldlive';
-  fieldT0=now;idolT=0;heartT=0;heartGot=0;
+  fieldT0=now;idolT=0;heartT=0;heartGot=0;goalPending=false;
   for(var i=0;i<blockers.length;i++){
     blockers[i].charm=now;                      // 聴き入る
   }
   aCharm=now;
   musicStop();                                 // 真夜中の曲を止めてバラードへ
-  idolMusic();
+  soloMusic(soloId);
 }
 function endFieldLive(){
   /* ソロは去っていく */
@@ -1479,9 +1516,15 @@ function endFieldLive(){
   for(var i=0;i<blockers.length;i++)blockers[i].charm=0;
   aCharm=0;
   musicStop();
-  nightMusic();                                // 夜の続きへ
   state='playing';
   idleT=now;
+  var gg2=ctr(goal.r,goal.c);
+  if(goalPending||Math.hypot(px-gg2.x,py-gg2.y)<cell*0.3){   // ライブ中に着いていたら即ゴール
+    goalPending=false;
+    startTally();
+    return;
+  }
+  nightMusic();                                // 夜の続きへ
 }
 function updateFieldLive(){
   playT+=dt;                                   // 残り時間は減らさない
@@ -1492,7 +1535,8 @@ function updateFieldLive(){
     if(el>=INTRO_MS){idolT=now;idolSwapT=now;lightSfx();}
     return;
   }
-  if(!heartT&&el>=INTRO_MS+IDOL_MS){heartT=now;musicStop();cheerSfx();}
+  var songEnd=(songOn&&songLen)?(songLen+600):(INTRO_MS+idolLen());
+  if(!heartT&&el>=songEnd){heartT=now;musicStop();cheerSfx();}
   if(heartT&&!heartGot&&now-heartT>=HEART_MS){
     heartGot=now;lives++;idolBonus++;
     beep(1046,0.09,0.05,'triangle');
@@ -1599,7 +1643,9 @@ function blockerPos(b){
     return {x:a0.x+(q0.x-a0.x)*b.prog,y:a0.y+(q0.y-a0.y)*b.prog};
   }
   if((b.mode!=='go'&&b.mode!=='hunt')||!b.path||!b.path.length) return ctr(b.r,b.c);
-  var i=Math.min(b.pi,b.path.length-1),a=ctr(b.path[i].r,b.path[i].c);
+  var i=Math.min(b.pi,b.path.length-1);
+  if(b.path[i].r!==b.r||b.path[i].c!==b.c) return ctr(b.r,b.c);   // 食い違ったら現在地
+  var a=ctr(b.path[i].r,b.path[i].c);
   if(i<b.path.length-1){
     var q=ctr(b.path[i+1].r,b.path[i+1].c);
     return {x:a.x+(q.x-a.x)*b.prog,y:a.y+(q.y-a.y)*b.prog};
@@ -1652,7 +1698,7 @@ function checkHoles(){
       aMode=aPrevMode;aHoleCool=now+3000;
       beep(300,0.14,0.05,'sawtooth');
     }
-  }else if(amoebaOn&&now>=aHoleCool){
+  }else if(amoebaOn&&now>=aHoleCool&&!amoebaWarping()){
     var a=amoebaPos();
     if(a){
       var q=cellAt(a.x,a.y);
@@ -1720,12 +1766,16 @@ function updateBlockers(){
     if(b.mode==='hunt'){
       if(!nightT){b.mode='wander';b.prog=0;b.wdir=null;pickWander(b);}
       else{
+        var cur=(b.path&&b.path.length)?b.path[Math.min(b.pi,b.path.length-1)]:null;
+        var lost=(!cur||cur.r!==b.r||cur.c!==b.c);      // 経路と現在地がずれた
         var tail=(b.path&&b.path.length)?b.path[b.path.length-1]:null;
         var stale=(!tail||tail.r!==pc.r||tail.c!==pc.c);
-        if(!b.path||(stale&&b.prog<0.06&&now-b.hlook>300)){
+        if(!b.path||lost||(stale&&b.prog<0.06&&now-b.hlook>300)){
+          if(lost)b.prog=0;
           b.hlook=now;
           var hp=pathTo({r:b.r,c:b.c},{r:pc.r,c:pc.c});
           if(hp&&hp.length>1){b.path=hp;b.pi=0;b.prog=0;}
+          else {b.path=null;b.prog=0;}
         }
         if(b.path&&b.path.length){
           b.prog+=(SPEED*NIGHT_SPD)*(dt/1000);
@@ -1749,13 +1799,12 @@ function updateBlockers(){
         }
       }
     }
-    if(lures.length&&now-b.look>420){
+    if(lures.length&&now-b.look>420&&b.prog<0.06){
       b.look=now;
-      if(b.mode==='hunt'){b.path=null;b.prog=0;}
       var L=nearestLure(b.r,b.c,BLK_RANGE);
       if(L){
         var p=pathTo({r:b.r,c:b.c},{r:L.r,c:L.c});
-        if(p&&p.length){b.path=p;b.pi=0;b.prog=0;b.target=L;b.mode='go';}
+        if(p&&p.length>1){b.path=p;b.pi=0;b.prog=0;b.target=L;b.mode='go';}
       }
     }
   }
@@ -2016,7 +2065,7 @@ function newStage(){
   picks=(stage>=PICK_FROM)?PICK_MAX2:PICK_MAX;
   aiming=false;pickPressed=false;dirPressed=false;breakFx=[];
   aMode='trail';aPath=null;aPi=0;aProg=0;aTarget=null;aFreeze=null;warpHold=null;
-  nightT=0;nightK=0;nightFlash=0;spawnAt=0;fieldUsed=false;
+  nightT=0;nightK=0;nightFlash=0;spawnAt=0;fieldUsed=false;goalPending=false;
   score=0;tBonus=TIME_MAX;
   placeBlockers();
   state='ready';readyT=now;
@@ -2079,8 +2128,7 @@ function tallyCount(){
 }
 function startIdol(demo,n,solo){
   idolDemo=!!demo;
-  soloId=solo||null;
-  if(!soloId&&!demo&&liveMode!=='group'&&soloDone[liveMode])soloId=liveMode;
+  soloId=solo||null;                      // ソロはデビュー公演と真夜中だけ
   idolN=soloId?1:((team.length>=7)?7:Math.max(IDOL_N,n||idolNext));
   idolRowsCache=soloId?[1,0,0]:idolRows(idolN);
   state='idol';introT=now;idolT=0;musicT=0;heartT=0;heartGot=0;idolSwapT=now;tipFx=[];
@@ -2088,7 +2136,8 @@ function startIdol(demo,n,solo){
   for(var i=0;i<idolN;i++){idolSlots.push(i);idolAnim.push({from:i,to:i,t:0});}
   /* 0番から順に猫のお面。最前列のセンターに立つ */
   held=null;
-  idolMusic();                      // 暗いうちから曲は流れている
+  if(soloId)soloMusic(soloId);      // ソロは自作の歌があればそれを使う
+  else idolMusic();                 // 暗いうちから曲は流れている
 }
 /* 人数に応じた3列の隊形（前列が少なく、後列ほど多い） */
 function idolRows(n){
@@ -2139,7 +2188,7 @@ function updateIdol(){
       beep(1200,0.05,0.03,'square');
     }
   }
-  if(!heartT&&now-(musicT||introT)>=IDOL_MS){    // 曲が終わると同時に歓声
+  if(!heartT&&now-(musicT||introT)>=idolLen()){ // 曲が終わると同時に歓声
     heartT=now;musicStop();cheerSfx();
   }
   if(heartT&&!heartGot&&now-heartT>=HEART_MS){
@@ -2461,7 +2510,7 @@ function tryWarp(){
   return true;
 }
 function step(ms){
-  if(state!=='playing') return;
+  if(state!=='playing'&&state!=='fieldlive') return;
   if(warpHold){
     if(held===warpHold) return;      // ワープ直後、同じ方向を押しっぱなしなら止まったまま
     warpHold=null;
@@ -2477,7 +2526,8 @@ function step(ms){
     else if(!(dir&&open(pc,dir))) return;
   }
   var amt=SPEED*ms/1000,guard=0;
-  while(amt>1e-9&&guard++<80&&state==='playing'){
+  var moveState=state;
+  while(amt>1e-9&&guard++<80&&state===moveState){
     var m=Math.min(amt,1-prog);
     prog+=m;amt-=m;
     sync();
@@ -2547,6 +2597,14 @@ function caught(msg,eater){
   gameOver(msg);
 }
 function sync(){
+  if(state==='fieldlive'){        // ライブ中は接触もアイテムも起きない
+    var p0=ctr(pc.r,pc.c),q0=dir?ctr(nb(pc,dir).r,nb(pc,dir).c):p0;
+    px=p0.x+(q0.x-p0.x)*prog;py=p0.y+(q0.y-p0.y)*prog;
+    if(dir)face=dir;
+    var gg=ctr(goal.r,goal.c);
+    if(Math.hypot(px-gg.x,py-gg.y)<cell*0.3) goalPending=true;   // 曲のあとでゴール
+    return;
+  }
   var p=playerPos();px=p.x;py=p.y;
   if(dir)face=dir;
   if(state!=='playing')return;
@@ -2567,7 +2625,7 @@ function sync(){
   // 追跡アメーバ
   if(amoebaOn){
     var a=amoebaPos();
-    if(a&&aMode!=='girl'&&aMode!=='hole'&&Math.hypot(px-a.x,py-a.y)<cell*0.45){caught('ヌメリンに触れた',null);return;}
+    if(a&&aMode!=='girl'&&aMode!=='hole'&&!amoebaWarping()&&Math.hypot(px-a.x,py-a.y)<cell*0.45){caught('ヌメリンに触れた',null);return;}
   }
   // 待ち伏せアメーバ
   for(var i=0;i<blockers.length;i++){
@@ -2616,7 +2674,7 @@ function sync(){
     }
   }
   var g=ctr(goal.r,goal.c);
-  if(Math.hypot(px-g.x,py-g.y)<cell*0.3) startTally();
+  if(state!=='fieldlive'&&Math.hypot(px-g.x,py-g.y)<cell*0.3) startTally();
 }
 function addDots(){
   var sp=cell*SPACING_F,guard=0;
@@ -2743,6 +2801,14 @@ function spawnOK(){
 function amoebaSpeed(){
   var t=(now-amoebaT)/1000;
   return Math.min(SPD_MAX*aBoost,(EAT_PER_SEC+(stage-1)*SPD_STAGE)*(1+t*SPD_RAMP)*aBoost);
+}
+function amoebaWarping(){
+  /* キセキがワープ口をまたぐ区間は、地面の裏を通っている扱い */
+  if(aMode!=='trail'||!dots.length)return false;
+  var i=Math.floor(amoeba);
+  if(i>=dots.length-1)return false;
+  var a=dots[i],b=dots[i+1];
+  return Math.hypot(b.x-a.x,b.y-a.y)>cell*1.6;
 }
 function amoebaPos(){
   if(aMode==='girl'&&aFreeze)return aFreeze;   // 少女を食べている間は動かない
@@ -2887,10 +2953,9 @@ function tap(x,y){
     if(renameId){nameEl&&nameEl.blur();return;}
     if(inBox(cb2,x,y,10)){beep(400,0.08,0.045,'triangle');saveDex();state='title';placeNameInput();return;}
     var sl2=soloList();
-    if(sl2.length&&inBox(modeBtn(),x,y,8)){          // GROUP ⇄ ソロ を切り替え
-      var order=['group'].concat(sl2);
-      var at2=order.indexOf(liveMode);
-      liveMode=order[(at2+1)%order.length];
+    if(sl2.length&&inBox(modeBtn(),x,y,8)){          // 真夜中に歌うソロを選ぶ
+      var at2=sl2.indexOf(liveMode);
+      liveMode=sl2[(at2+1)%sl2.length];
       beep(900,0.07,0.045,'triangle');saveDex();return;
     }
     for(var ri=0;ri<RARE.length;ri++){
@@ -3128,6 +3193,11 @@ function update(){
       animRem=[];animAdd=[];animSkip={};
       state='playing';
     }
+  }
+  if(state==='fieldlive'){          // ライブ中もラウスケンは歩ける
+    if(held)idleT=now;
+    step(dt);
+    if(state!=='fieldlive')return;
   }
   if(state==='playing'){
     tBonus=Math.max(0,TIME_MAX-Math.floor((now-playT)/1000)*TIME_DEC);
@@ -4052,6 +4122,13 @@ function drawAmoeba(){
     return;
   }
   var a=amoebaPos();if(!a)return;
+  if(amoebaWarping()){                       // 裏を通っている間はうっすらとだけ
+    ctx.save();ctx.globalAlpha=0.22;
+    ctx.beginPath();ctx.ellipse?ctx.ellipse(a.x,a.y,cell*0.30,cell*0.12,0,0,7):ctx.arc(a.x,a.y,cell*0.2,0,7);
+    ctx.fillStyle=rgba(RED,0.6);ctx.fill();
+    ctx.restore();
+    return;
+  }
   blob(a.x,a.y,cell*0.33,now,rgba(RED,0.88),rgba(RED_L,0.9));
   ctx.beginPath();ctx.arc(a.x,a.y,cell*0.09,0,7);
   ctx.fillStyle=rgba(YEL,0.75);ctx.fill();
@@ -4723,6 +4800,10 @@ function drawFieldLive(){
     ctx.fillStyle='rgba(255,255,255,0.7)';
     bt('MIDNIGHT LIVE',bx,by2+cell*0.9,1,'center',2);
   }
+  if(goalPending){
+    ctx.fillStyle='rgba(60,255,136,0.85)';
+    bt('GOAL AFTER THE SONG',W/2,oy+cell*0.6,1,'center',2);
+  }
   if(heartT){
     var t2=Math.min(1,(now-heartT)/HEART_MS);
     var hp2=heartPath(t2,bx,by2-hgt*0.5,px,py-cell*0.5);
@@ -4979,7 +5060,9 @@ var HELP=[
 ['t','その場で1人だけのライブが自動で始まる。','Her own live show starts right away.'],
 ['t','ソロは大きく細やかに描かれ、バラードを歌う。','She is drawn in detail and sings a ballad.'],
 ['t','図鑑のNAMEで名前を自由につけられる。','Tap NAME in the collection to rename her.'],
-['t','図鑑のLIVEでグループかソロかを選べる。','Tap LIVE to pick the group or a solo act.'],
+['t','ソロが歌うのはデビュー公演と真夜中だけ。','Solos sing at their debut and at midnight only.'],
+['t','通常のライブはいつもグループで行われる。','Regular lives are always by the group.'],
+['t','図鑑のMIDNIGHTで真夜中に歌う人を選べる。','Tap MIDNIGHT to pick who sings at night.'],
 ['s','真夜中のライブ','MIDNIGHT LIVE'],
 ['t','真夜中にソロがいると、花畑でライブができる。','With a solo act you can play the flower bed at night.'],
 ['t','ヌメリンは薄橙色になり、♪を出して聴き入る。','NUMELINs turn pale orange and listen, frozen.'],
@@ -5121,7 +5204,8 @@ function drawDex(){
     ctx.fillStyle='rgba(255,212,0,0.14)';ctx.fill();
     ctx.strokeStyle='#ffd400';ctx.lineWidth=1.4;ctx.stroke();
     ctx.fillStyle='#ffd400';
-    bt('LIVE: '+((liveMode==='group')?'GROUP':soloLabel(liveMode)),mb.x+mb.w/2,mb.y+mb.h/2+6,2,'center',1);
+    bt('MIDNIGHT: '+((liveMode==='group'||!soloDone[liveMode])?soloLabel(sl[0]):soloLabel(liveMode)),
+       mb.x+mb.w/2,mb.y+mb.h/2+6,2,'center',1);
   }
   var i;
   for(i=0;i<RARE.length;i++){
@@ -5585,8 +5669,7 @@ function drawTitle(){
     ctx.fillStyle='rgba(255,138,192,0.12)';ctx.fill();
     ctx.strokeStyle='rgba(255,138,192,0.85)';ctx.lineWidth=1.4;ctx.stroke();
     ctx.fillStyle=GIRL_DRESS;
-    bt((liveMode!=='group')?('SOLO: '+soloLabel(liveMode)):
-       ((ownedList().length>=7)?'NEW WATONERS':('WATONERS  '+ownedList().length+'/'+RARE.length)),
+    bt((ownedList().length>=7)?'NEW WATONERS':('WATONERS  '+ownedList().length+'/'+RARE.length),
        xb.x+xb.w/2,xb.y+xb.h/2+6,2,'center',1);
   }
   /* HOW TO PLAY */
