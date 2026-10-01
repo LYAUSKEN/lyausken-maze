@@ -665,11 +665,10 @@ function decodeSong(key,arr){
     },function(){delete songPend[key];});
   }catch(e){delete songPend[key];}
 }
-function songInit(){
-  if(songInited)return;
-  if(!audioInit())return;
-  songInited=true;
-  /* ファイルの有無だけ調べる（中身はあとで読む） */
+var songProbed=false;
+function songProbeAll(){                       /* 曲ファイルの有無。起動時に調べる */
+  if(songProbed)return;
+  songProbed=true;
   try{
     fetch('solo-song.mp3',{method:'HEAD'}).then(function(r){
       if(r&&r.ok)songExt['default']='solo-song.mp3';
@@ -684,6 +683,12 @@ function songInit(){
       }catch(e){}
     });
   })(RARE[i].id);
+}
+function songInit(){                           /* 音の仕組みはタップ後に用意する */
+  if(songInited)return;
+  if(!audioInit())return;
+  songInited=true;
+  songProbeAll();
 }
 function haveSong(key){
   return !!(songBuf[key]||songPend[key]||SONG_EMB[key]||songExt[key]);
@@ -6112,7 +6117,7 @@ function drawTitle(){
   (function(){
     var n=0;for(var k in songExt)n++;
     ctx.fillStyle=n?'rgba(60,255,136,0.9)':'rgba(255,255,255,0.55)';
-    bt('SONG FILES '+n,W/2,H*0.978,1,'center',2);
+    bt('SONG FILES '+n,PAD,H*0.618,1,'left',2);
   })();
   /* HOW TO PLAY */
   var hb=howBtn();
@@ -6182,6 +6187,7 @@ function loop(ts){
   requestAnimationFrame(loop);
 }
 ranks=loadRanks();loadDex();saveInfo=readSave();
+try{songProbeAll();}catch(e){}             // 曲ファイルを先に調べる（音は鳴らさない）
 makeNameInput();
 resize();
 placeNameInput();
