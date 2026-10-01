@@ -6108,11 +6108,11 @@ function drawTitle(){
     bt((ownedList().length>=7)?'NEW WATONERS':('WATONERS  '+ownedList().length+'/'+RARE.length),
        xb.x+xb.w/2,xb.y+xb.h/2+6,2,'center',1);
   }
-  /* 曲ファイルが見つかっているか（確認用） */
+  /* 曲ファイルが見つかっているか（確認用・白地を避けて下に出す） */
   (function(){
     var n=0;for(var k in songExt)n++;
-    ctx.fillStyle='rgba(255,255,255,0.45)';
-    bt('SONG FILES '+n,W-PAD,H*0.042,1,'right',2);
+    ctx.fillStyle=n?'rgba(60,255,136,0.9)':'rgba(255,255,255,0.55)';
+    bt('SONG FILES '+n,W/2,H*0.978,1,'center',2);
   })();
   /* HOW TO PLAY */
   var hb=howBtn();
