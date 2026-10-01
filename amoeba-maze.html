@@ -669,15 +669,17 @@ var songProbed=false;
 function songProbeAll(){                       /* 曲ファイルの有無。起動時に調べる */
   if(songProbed)return;
   songProbed=true;
-  try{
-    fetch('solo-song.mp3',{method:'HEAD'}).then(function(r){
-      if(r&&r.ok)songExt['default']='solo-song.mp3';
-    }).catch(function(){});
-  }catch(e){}
+  [['default','solo-song.mp3'],['default@night','solo-song-night.mp3']].forEach(function(pair){
+    try{
+      fetch(pair[1],{method:'HEAD',cache:'no-cache'}).then(function(r){
+        if(r&&r.ok)songExt[pair[0]]=pair[1];
+      }).catch(function(){});
+    }catch(e){}
+  });
   for(var i=0;i<RARE.length;i++)(function(id){
     [[id,'solo-'+id+'.mp3'],[id+'@night','solo-'+id+'-night.mp3']].forEach(function(pair){
       try{
-        fetch(pair[1],{method:'HEAD'}).then(function(r){
+        fetch(pair[1],{method:'HEAD',cache:'no-cache'}).then(function(r){
           if(r&&r.ok)songExt[pair[0]]=pair[1];
         }).catch(function(){});
       }catch(e){}
@@ -698,7 +700,7 @@ function loadSong(key){                      // 必要になった時点で読�
   songPend[key]=1;
   if(songExt[key]){
     try{
-      fetch(songExt[key]).then(function(r){
+      fetch(songExt[key],{cache:'no-cache'}).then(function(r){
         if(!r||!r.ok){delete songPend[key];return null;}
         return r.arrayBuffer();
       }).then(function(a){
@@ -719,6 +721,7 @@ function stopSoloSong(){
 }
 function pickSongKey(id,night){
   if(night&&id&&haveSong(id+'@night'))return id+'@night';
+  if(night&&haveSong('default@night'))return 'default@night';   // 共通の真夜中版
   if(id&&haveSong(id))return id;
   return 'default';
 }
