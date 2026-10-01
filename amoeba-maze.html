@@ -2311,57 +2311,96 @@ function drawHeart(x,y,r,col,a){
   ctx.closePath();ctx.fill();
   ctx.restore();
 }
-function drawGraffiti(ox2,oy2,S,lit){          /* ロスの壁の落書き */
+function drawStripeBack(ox2,oy2,S,lit){        /* 幅広の縦ストライプ */
   ctx.save();
   ctx.beginPath();ctx.rect(ox2,oy2,S,S*0.88);ctx.clip();
-  ctx.globalAlpha=0.35+0.4*lit;
+  var bwid=S*0.13;
+  for(var i=0;i<Math.ceil(S/bwid)+1;i++){
+    if(i%2)continue;
+    ctx.fillStyle='rgba(224,247,255,'+(0.10+0.14*lit)+')';
+    ctx.fillRect(ox2+i*bwid,oy2,bwid,S*0.88);
+  }
+  ctx.fillStyle='rgba(90,209,255,'+(0.10*lit)+')';   // 淡い水色の重ね
+  for(i=1;i<Math.ceil(S/bwid)+1;i+=2){
+    ctx.fillRect(ox2+i*bwid,oy2,bwid,S*0.88);
+  }
+  ctx.restore();
+}
+function drawCityBack(ox2,oy2,S,lit){          /* 夕方の都会 */
+  ctx.save();
+  ctx.beginPath();ctx.rect(ox2,oy2,S,S*0.88);ctx.clip();
+  /* 夕日 */
+  ctx.fillStyle='rgba(255,214,120,'+(0.55+0.35*lit)+')';
+  ctx.beginPath();ctx.arc(ox2+S*0.70,oy2+S*0.60,S*0.095,0,7);ctx.fill();
+  ctx.fillStyle='rgba(255,180,90,'+(0.18*lit)+')';
+  ctx.beginPath();ctx.arc(ox2+S*0.70,oy2+S*0.60,S*0.20,0,7);ctx.fill();
+  /* ビルのシルエット（奥） */
+  var H0=oy2+S*0.88;
+  ctx.fillStyle='rgba(40,22,58,'+(0.55+0.2*lit)+')';
+  var far=[[0.00,0.30],[0.10,0.42],[0.22,0.26],[0.33,0.38],[0.46,0.22],[0.58,0.34],[0.70,0.28],[0.82,0.40],[0.92,0.24]];
+  for(var i=0;i<far.length;i++){
+    var bx3=ox2+S*far[i][0],bh=S*far[i][1],bw3=S*0.12;
+    ctx.fillRect(bx3,H0-bh,bw3,bh);
+  }
+  /* ビルのシルエット（手前）と窓 */
+  ctx.fillStyle='rgba(22,12,34,'+(0.75+0.2*lit)+')';
+  var near=[[0.04,0.22,0.14],[0.26,0.32,0.13],[0.48,0.18,0.15],[0.66,0.28,0.12],[0.84,0.22,0.14]];
+  for(i=0;i<near.length;i++){
+    var nx=ox2+S*near[i][0],nh=S*near[i][1],nw=S*near[i][2];
+    ctx.fillRect(nx,H0-nh,nw,nh);
+  }
+  ctx.fillStyle='rgba(255,208,120,'+(0.55*lit)+')';
+  for(i=0;i<near.length;i++){
+    var wx0=ox2+S*near[i][0],wh=S*near[i][1],ww=S*near[i][2];
+    for(var r2=0;r2<4;r2++)for(var c2=0;c2<3;c2++){
+      if(((i*7+r2*3+c2)%3)===0)continue;
+      ctx.fillRect(wx0+ww*(0.16+c2*0.28),H0-wh+wh*(0.14+r2*0.21),ww*0.16,wh*0.10);
+    }
+  }
+  ctx.restore();
+}
+function drawGraffiti(ox2,oy2,S,lit){          /* 壁に描かれた虹 */
+  ctx.save();
+  ctx.beginPath();ctx.rect(ox2,oy2,S,S*0.88);ctx.clip();
   /* 壁の目地 */
-  ctx.strokeStyle='rgba(0,0,0,0.12)';ctx.lineWidth=1;
+  ctx.strokeStyle='rgba(0,0,0,0.10)';ctx.lineWidth=1;
   for(var r=1;r<7;r++){
     ctx.beginPath();ctx.moveTo(ox2,oy2+S*r*0.13);ctx.lineTo(ox2+S,oy2+S*r*0.13);ctx.stroke();
   }
-  /* 大きなバブル文字 */
-  var cols=['#ff3b6b','#ffd400','#3cc8ff','#3cff88','#b06bff','#ff8a3c'];
-  var seed=[[0.14,0.20,0.13],[0.34,0.16,0.10],[0.52,0.22,0.12],[0.72,0.17,0.11],[0.86,0.26,0.09]];
-  for(var i=0;i<seed.length;i++){
-    var gx=ox2+S*seed[i][0],gy=oy2+S*seed[i][1],gr=S*seed[i][2];
-    ctx.fillStyle=cols[i%cols.length];
+  /* 虹（7色の弧） */
+  var RB=['#e0243a','#ff8a3c','#ffd400','#3cc85a','#3cc8ff','#3a5fd0','#9a4fd0'];
+  var cx3=ox2+S*0.50,cy3=oy2+S*0.92,R0=S*0.62,bw2=S*0.042;
+  ctx.lineCap='butt';
+  for(var k3=0;k3<7;k3++){
+    ctx.strokeStyle=RB[k3];
+    ctx.globalAlpha=(0.55+0.35*lit);
+    ctx.lineWidth=bw2;
     ctx.beginPath();
-    ctx.arc(gx,gy,gr*0.55,0,7);ctx.fill();
-    ctx.beginPath();
-    ctx.arc(gx+gr*0.5,gy+gr*0.12,gr*0.42,0,7);ctx.fill();
-    ctx.strokeStyle='rgba(0,0,0,0.55)';ctx.lineWidth=Math.max(1.5,S*0.007);
-    ctx.beginPath();ctx.arc(gx,gy,gr*0.55,0,7);ctx.stroke();
-  }
-  /* タグ（走り書き） */
-  ctx.strokeStyle='rgba(20,20,24,0.65)';ctx.lineWidth=Math.max(2,S*0.011);
-  ctx.lineCap='round';
-  var tags=[[0.08,0.46],[0.46,0.52],[0.70,0.44]];
-  for(i=0;i<tags.length;i++){
-    var tx=ox2+S*tags[i][0],ty=oy2+S*tags[i][1];
-    ctx.beginPath();
-    ctx.moveTo(tx,ty);
-    ctx.quadraticCurveTo(tx+S*0.05,ty-S*0.06,tx+S*0.10,ty);
-    ctx.quadraticCurveTo(tx+S*0.14,ty+S*0.05,tx+S*0.19,ty-S*0.02);
+    ctx.arc(cx3,cy3,R0-k3*bw2,Math.PI*1.02,Math.PI*1.98);
     ctx.stroke();
   }
-  /* 星としぶき */
+  /* 虹のふもとの雲 */
+  ctx.globalAlpha=0.75*(0.5+0.5*lit);
+  ctx.fillStyle='#f4f1e6';
+  [[0.12,0.70,0.085],[0.88,0.70,0.085]].forEach(function(c){
+    var qx=ox2+S*c[0],qy=oy2+S*c[1],qr=S*c[2];
+    ctx.beginPath();ctx.arc(qx,qy,qr,0,7);ctx.fill();
+    ctx.beginPath();ctx.arc(qx-qr*0.8,qy+qr*0.25,qr*0.7,0,7);ctx.fill();
+    ctx.beginPath();ctx.arc(qx+qr*0.8,qy+qr*0.25,qr*0.7,0,7);ctx.fill();
+  });
+  /* 小さな太陽 */
+  ctx.globalAlpha=0.7*(0.4+0.6*lit);
   ctx.fillStyle='#ffd400';
-  for(i=0;i<3;i++){
-    var sx3=ox2+S*(0.22+i*0.28),sy3=oy2+S*0.62;
+  ctx.beginPath();ctx.arc(ox2+S*0.80,oy2+S*0.16,S*0.055,0,7);ctx.fill();
+  ctx.strokeStyle='#ffd400';ctx.lineWidth=Math.max(1.5,S*0.008);
+  for(var sN=0;sN<8;sN++){
+    var sa=Math.PI*2*sN/8;
     ctx.beginPath();
-    for(var k2=0;k2<10;k2++){
-      var ang=Math.PI*2*k2/10-Math.PI/2,rr=(k2%2?S*0.012:S*0.028);
-      var px3=sx3+Math.cos(ang)*rr,py3=sy3+Math.sin(ang)*rr;
-      if(k2===0)ctx.moveTo(px3,py3);else ctx.lineTo(px3,py3);
-    }
-    ctx.closePath();ctx.fill();
+    ctx.moveTo(ox2+S*0.80+Math.cos(sa)*S*0.072,oy2+S*0.16+Math.sin(sa)*S*0.072);
+    ctx.lineTo(ox2+S*0.80+Math.cos(sa)*S*0.098,oy2+S*0.16+Math.sin(sa)*S*0.098);
+    ctx.stroke();
   }
-  ctx.fillStyle='rgba(255,59,107,0.5)';
-  for(i=0;i<14;i++){
-    var dx2=ox2+S*((i*37)%100)/100,dy2=oy2+S*(0.70+0.12*((i*53)%10)/10);
-    ctx.beginPath();ctx.arc(dx2,dy2,S*0.006,0,7);ctx.fill();
-  }
+  ctx.globalAlpha=1;
   ctx.restore();
 }
 function drawBike(cx,cy,bw){                   /* アメリカンバイク（左向き） */
@@ -2457,8 +2496,11 @@ function drawIdol(){
   lit=lit*lit*(3-2*lit);                       // ゆっくり明るくなる
   var sea=(soloId==='mermaid');                // 人魚は夏の海の舞台
   var mtl=(soloId==='metal');                  // メタルは赤い舞台
-  var skt=(soloId==='skate');                  // スケボーは落書きの壁
-  ctx.fillStyle=sea?'#04223a':(mtl?'#120409':(skt?'#1a1814':'#05050c'));ctx.fillRect(0,0,W,H);
+  var skt=(soloId==='skate');                  // スケボーは虹の壁
+  var stp=(soloId==='stripe');                 // ストライプは縞の舞台
+  var flw=(soloId==='flower');                 // 花柄は夕方の街
+  ctx.fillStyle=sea?'#04223a':(mtl?'#120409':(skt?'#1a1814':(stp?'#0e2733':(flw?'#1b1020':'#05050c'))));
+  ctx.fillRect(0,0,W,H);
   /* 舞台の正方形 */
   if(sea){
     var sg=ctx.createLinearGradient(0,oy2,0,oy2+S);
@@ -2466,6 +2508,18 @@ function drawIdol(){
     sg.addColorStop(0.55,'#0a5468');
     sg.addColorStop(1,'#187c76');
     ctx.fillStyle=sg;
+  }else if(stp){
+    var pg=ctx.createLinearGradient(0,oy2,0,oy2+S);
+    pg.addColorStop(0,'#17475c');
+    pg.addColorStop(1,'#0d2a38');
+    ctx.fillStyle=pg;
+  }else if(flw){
+    var fg=ctx.createLinearGradient(0,oy2,0,oy2+S);
+    fg.addColorStop(0,'#2b1b52');               // 夕空
+    fg.addColorStop(0.45,'#7a3570');
+    fg.addColorStop(0.72,'#d9654a');
+    fg.addColorStop(1,'#f0a04b');
+    ctx.fillStyle=fg;
   }else if(skt){
     var kg=ctx.createLinearGradient(0,oy2,0,oy2+S);
     kg.addColorStop(0,'#d9cfb6');               // 日に焼けた壁
@@ -2538,6 +2592,8 @@ function drawIdol(){
       ctx.closePath();ctx.fill();
     }
   }
+  if(stp) drawStripeBack(ox2,oy2,S,lit);
+  if(flw) drawCityBack(ox2,oy2,S,lit);
   if(skt) drawGraffiti(ox2,oy2,S,lit);
   /* 舞台の床 */
   ctx.fillStyle=sea?'#b9ac82':(mtl?'#1a1216':(skt?'#6f6855':'#2a1636'));  // 砂浜（夜の色）
@@ -2634,22 +2690,24 @@ function drawIdol(){
   ctx.save();
   ctx.beginPath();ctx.rect(ox2,oy2,S,S);ctx.clip();
   ctx.globalCompositeOperation='lighter';
-  if(skt&&idolT){                               /* 8の字に回る4つの丸いライト */
-    var LC=['#ff3b6b','#ffd400','#3cc8ff','#3cff88'];
-    for(i=0;i<4;i++){
+  if(skt&&idolT){                               /* 8の字に回る12個の丸いライト */
+    var LC=['#ff3b6b','#ff8a3c','#ffd400','#3cff88','#3cc8ff','#b06bff'];
+    for(i=0;i<12;i++){
       for(var tr=0;tr<5;tr++){
-        var th=now*0.0011+i*(Math.PI/2)-tr*0.09;
+        var th=now*0.0011+i*(Math.PI/6)-tr*0.09;
         var lx3=ox2+S*0.5+Math.sin(th)*S*0.30;
         var ly3=oy2+S*0.42+Math.sin(th*2)*S*0.20;
-        var rr3=S*(0.030-tr*0.004);
-        ctx.fillStyle=LC[i];
-        ctx.globalAlpha=(0.55-tr*0.10)*lit;
+        var rr3=S*(0.026-tr*0.0035);
+        ctx.fillStyle=LC[i%LC.length];
+        ctx.globalAlpha=(0.48-tr*0.09)*lit;
         ctx.beginPath();ctx.arc(lx3,ly3,rr3,0,7);ctx.fill();
       }
     }
     ctx.globalAlpha=1;
   }
-  var lasN=(idolT&&!skt)?(sea?2:6):0,lasSpd=sea?0.000275:0.0011;
+  var lasN=(idolT&&!skt)?(sea?2:6):0;
+  var lasSpd=sea?0.000275:(stp?0.000275:(flw?0.00037:0.0011));
+  var lasW=flw?2:1;                            // 花柄は太く
   for(i=0;i<lasN;i++){
     var lp=((now*lasSpd)+i*(sea?0.5:0.31))%1;
     if(lp<0.62){
@@ -2658,10 +2716,10 @@ function drawIdol(){
       var ang=-0.85+1.7*((i%2)?a3:1-a3);
       var ex=sx2+Math.sin(ang)*S*1.4,ey=sy2+Math.cos(ang)*S*1.4;
       ctx.strokeStyle=mtl?('rgba(255,40,40,'+(0.20*al)+')'):('rgba(50,255,110,'+(0.16*al)+')');
-      ctx.lineWidth=S*0.055;
+      ctx.lineWidth=S*0.055*lasW;
       ctx.beginPath();ctx.moveTo(sx2,sy2);ctx.lineTo(ex,ey);ctx.stroke();
       ctx.strokeStyle=mtl?('rgba(255,200,200,'+(0.9*al)+')'):('rgba(190,255,215,'+(0.85*al)+')');
-      ctx.lineWidth=Math.max(1,S*0.009);
+      ctx.lineWidth=Math.max(1,S*0.009*lasW);
       ctx.beginPath();ctx.moveTo(sx2,sy2);ctx.lineTo(ex,ey);ctx.stroke();
       ctx.beginPath();ctx.arc(sx2,sy2,S*0.012*(0.6+al),0,7);
       ctx.fillStyle=mtl?('rgba(255,150,150,'+al+')'):('rgba(160,255,190,'+al+')');ctx.fill();
@@ -4972,10 +5030,9 @@ function drawGirlBody(x,y,h,scale,face,cheer){
       ctx.beginPath();ctx.arc(x+hr*1.32,hy+hr*0.62,hr*0.52,0,7);ctx.fill();
       ctx.fillRect(x-hr*1.62,hy+hr*0.62,hr*0.6,hr*1.5);
       ctx.fillRect(x+hr*1.02,hy+hr*0.62,hr*0.6,hr*1.5);
-    }else if(hairOv===2){                 /* ロングストレート */
+    }else if(hairOv===2){                 /* ロングストレート（顔にかからない） */
       ctx.fillRect(x-hr*1.28,hy-hr*0.5,hr*0.52,hr*3.6);
       ctx.fillRect(x+hr*0.76,hy-hr*0.5,hr*0.52,hr*3.6);
-      ctx.beginPath();ctx.arc(x,hy+hr*0.2,hr*1.02,0,Math.PI);ctx.fill();
     }else{                                /* ボブ */
       ctx.fillRect(x-hr*1.2,hy-hr*0.5,hr*0.42,hr*1.6);
       ctx.fillRect(x+hr*0.78,hy-hr*0.5,hr*0.42,hr*1.6);
