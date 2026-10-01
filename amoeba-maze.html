@@ -372,7 +372,7 @@ var RARE=[
  {id:'swim',  ja:'水着',        en:'SWIMSUIT',  dress:'#ff5f8d', hair:0,  swim:1},
  {id:'afro',  ja:'アフロ',      en:'AFRO',      dress:'#ffcf3a', hair:3},
  {id:'long',  ja:'ロングヘア',  en:'LONG HAIR', dress:'#b06bff', hair:2},
- {id:'skate', ja:'スケボー',    en:'SKATER',    dress:'#5ad1ff', hair:1,  board:1},
+ {id:'skate', ja:'スケボー',    en:'SKATER',    dress:'#b9ecd9', hair:1,  board:1, doit:1},
  {id:'kaiju', ja:'怪獣',        en:'KAIJU',     dress:'#4fbf5a', hair:-1, kaiju:1},
  {id:'stripe',ja:'ストライプ',  en:'STRIPES',   dress:'#ffffff', hair:0,  vstripe:1},
  {id:'witch', ja:'魔女',        en:'WITCH',     dress:'#2b2b4a', hair:2,  hat:1},
@@ -2311,6 +2311,59 @@ function drawHeart(x,y,r,col,a){
   ctx.closePath();ctx.fill();
   ctx.restore();
 }
+function drawGraffiti(ox2,oy2,S,lit){          /* ロスの壁の落書き */
+  ctx.save();
+  ctx.beginPath();ctx.rect(ox2,oy2,S,S*0.88);ctx.clip();
+  ctx.globalAlpha=0.35+0.4*lit;
+  /* 壁の目地 */
+  ctx.strokeStyle='rgba(0,0,0,0.12)';ctx.lineWidth=1;
+  for(var r=1;r<7;r++){
+    ctx.beginPath();ctx.moveTo(ox2,oy2+S*r*0.13);ctx.lineTo(ox2+S,oy2+S*r*0.13);ctx.stroke();
+  }
+  /* 大きなバブル文字 */
+  var cols=['#ff3b6b','#ffd400','#3cc8ff','#3cff88','#b06bff','#ff8a3c'];
+  var seed=[[0.14,0.20,0.13],[0.34,0.16,0.10],[0.52,0.22,0.12],[0.72,0.17,0.11],[0.86,0.26,0.09]];
+  for(var i=0;i<seed.length;i++){
+    var gx=ox2+S*seed[i][0],gy=oy2+S*seed[i][1],gr=S*seed[i][2];
+    ctx.fillStyle=cols[i%cols.length];
+    ctx.beginPath();
+    ctx.arc(gx,gy,gr*0.55,0,7);ctx.fill();
+    ctx.beginPath();
+    ctx.arc(gx+gr*0.5,gy+gr*0.12,gr*0.42,0,7);ctx.fill();
+    ctx.strokeStyle='rgba(0,0,0,0.55)';ctx.lineWidth=Math.max(1.5,S*0.007);
+    ctx.beginPath();ctx.arc(gx,gy,gr*0.55,0,7);ctx.stroke();
+  }
+  /* タグ（走り書き） */
+  ctx.strokeStyle='rgba(20,20,24,0.65)';ctx.lineWidth=Math.max(2,S*0.011);
+  ctx.lineCap='round';
+  var tags=[[0.08,0.46],[0.46,0.52],[0.70,0.44]];
+  for(i=0;i<tags.length;i++){
+    var tx=ox2+S*tags[i][0],ty=oy2+S*tags[i][1];
+    ctx.beginPath();
+    ctx.moveTo(tx,ty);
+    ctx.quadraticCurveTo(tx+S*0.05,ty-S*0.06,tx+S*0.10,ty);
+    ctx.quadraticCurveTo(tx+S*0.14,ty+S*0.05,tx+S*0.19,ty-S*0.02);
+    ctx.stroke();
+  }
+  /* 星としぶき */
+  ctx.fillStyle='#ffd400';
+  for(i=0;i<3;i++){
+    var sx3=ox2+S*(0.22+i*0.28),sy3=oy2+S*0.62;
+    ctx.beginPath();
+    for(var k2=0;k2<10;k2++){
+      var ang=Math.PI*2*k2/10-Math.PI/2,rr=(k2%2?S*0.012:S*0.028);
+      var px3=sx3+Math.cos(ang)*rr,py3=sy3+Math.sin(ang)*rr;
+      if(k2===0)ctx.moveTo(px3,py3);else ctx.lineTo(px3,py3);
+    }
+    ctx.closePath();ctx.fill();
+  }
+  ctx.fillStyle='rgba(255,59,107,0.5)';
+  for(i=0;i<14;i++){
+    var dx2=ox2+S*((i*37)%100)/100,dy2=oy2+S*(0.70+0.12*((i*53)%10)/10);
+    ctx.beginPath();ctx.arc(dx2,dy2,S*0.006,0,7);ctx.fill();
+  }
+  ctx.restore();
+}
 function drawBike(cx,cy,bw){                   /* アメリカンバイク（左向き） */
   var r=bw*0.19;
   ctx.save();
@@ -2404,7 +2457,8 @@ function drawIdol(){
   lit=lit*lit*(3-2*lit);                       // ゆっくり明るくなる
   var sea=(soloId==='mermaid');                // 人魚は夏の海の舞台
   var mtl=(soloId==='metal');                  // メタルは赤い舞台
-  ctx.fillStyle=sea?'#04223a':(mtl?'#120409':'#05050c');ctx.fillRect(0,0,W,H);
+  var skt=(soloId==='skate');                  // スケボーは落書きの壁
+  ctx.fillStyle=sea?'#04223a':(mtl?'#120409':(skt?'#1a1814':'#05050c'));ctx.fillRect(0,0,W,H);
   /* 舞台の正方形 */
   if(sea){
     var sg=ctx.createLinearGradient(0,oy2,0,oy2+S);
@@ -2412,6 +2466,12 @@ function drawIdol(){
     sg.addColorStop(0.55,'#0a5468');
     sg.addColorStop(1,'#187c76');
     ctx.fillStyle=sg;
+  }else if(skt){
+    var kg=ctx.createLinearGradient(0,oy2,0,oy2+S);
+    kg.addColorStop(0,'#d9cfb6');               // 日に焼けた壁
+    kg.addColorStop(0.75,'#c2b79c');
+    kg.addColorStop(1,'#9f9478');
+    ctx.fillStyle=kg;
   }else if(mtl){
     var mg2=ctx.createLinearGradient(0,oy2,0,oy2+S);
     mg2.addColorStop(0,'#8e0f1e');             // 上部の赤い光
@@ -2478,8 +2538,9 @@ function drawIdol(){
       ctx.closePath();ctx.fill();
     }
   }
+  if(skt) drawGraffiti(ox2,oy2,S,lit);
   /* 舞台の床 */
-  ctx.fillStyle=sea?'#b9ac82':(mtl?'#1a1216':'#2a1636');  // 砂浜（夜の色）
+  ctx.fillStyle=sea?'#b9ac82':(mtl?'#1a1216':(skt?'#6f6855':'#2a1636'));  // 砂浜（夜の色）
   ctx.fillRect(ox2,oy2+S*0.86,S,S*0.14);
   ctx.fillStyle=sea?'rgba(255,255,255,0.35)':'rgba(255,255,255,0.08)';
   ctx.fillRect(ox2,oy2+S*0.86,S,2);
@@ -2573,7 +2634,22 @@ function drawIdol(){
   ctx.save();
   ctx.beginPath();ctx.rect(ox2,oy2,S,S);ctx.clip();
   ctx.globalCompositeOperation='lighter';
-  var lasN=idolT?(sea?2:6):0,lasSpd=sea?0.000275:0.0011;
+  if(skt&&idolT){                               /* 8の字に回る4つの丸いライト */
+    var LC=['#ff3b6b','#ffd400','#3cc8ff','#3cff88'];
+    for(i=0;i<4;i++){
+      for(var tr=0;tr<5;tr++){
+        var th=now*0.0011+i*(Math.PI/2)-tr*0.09;
+        var lx3=ox2+S*0.5+Math.sin(th)*S*0.30;
+        var ly3=oy2+S*0.42+Math.sin(th*2)*S*0.20;
+        var rr3=S*(0.030-tr*0.004);
+        ctx.fillStyle=LC[i];
+        ctx.globalAlpha=(0.55-tr*0.10)*lit;
+        ctx.beginPath();ctx.arc(lx3,ly3,rr3,0,7);ctx.fill();
+      }
+    }
+    ctx.globalAlpha=1;
+  }
+  var lasN=(idolT&&!skt)?(sea?2:6):0,lasSpd=sea?0.000275:0.0011;
   for(i=0;i<lasN;i++){
     var lp=((now*lasSpd)+i*(sea?0.5:0.31))%1;
     if(lp<0.62){
@@ -4601,6 +4677,31 @@ function drawGirlBody(x,y,h,scale,face,cheer){
     ctx.beginPath();
     ctx.moveTo(x+w*0.16,y-h*0.14);ctx.lineTo(x,y-h*0.06);ctx.lineTo(x+w*0.16,y+h*0.02);
     ctx.closePath();ctx.fill();
+  }
+  if(R&&R.doit){                                 /* タンクトップ＋短パン */
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(x-w*(side?0.48:0.66),y+h*0.40);
+    ctx.lineTo(x-w*(side?0.22:0.30),y-h*0.20);
+    ctx.lineTo(x+w*(side?0.22:0.30),y-h*0.20);
+    ctx.lineTo(x+w*(side?0.48:0.66),y+h*0.40);
+    ctx.closePath();ctx.clip();
+    ctx.fillStyle='#5ad1ff';                     // 水色の短パン
+    ctx.fillRect(x-w*0.8,y+h*0.12,w*1.6,h*0.30);
+    ctx.restore();
+    ctx.fillStyle=SKIN;                          // 肩を出す
+    ctx.fillRect(x-w*0.30,y-h*0.20,w*0.10,h*0.10);
+    ctx.fillRect(x+w*0.20,y-h*0.20,w*0.10,h*0.10);
+    var cw3=w*0.50,ch3=h*0.085;                  // 胸の赤い長方形
+    ctx.fillStyle='#e0243a';
+    ctx.fillRect(x-cw3/2,y-h*0.06,cw3,ch3);
+    if(h>60){
+      ctx.fillStyle='#ffffff';
+      bt('DO IT!',x,y-h*0.06+ch3*0.78,1,'center',0);
+    }else{
+      ctx.fillStyle='rgba(255,255,255,0.9)';
+      ctx.fillRect(x-cw3*0.34,y-h*0.06+ch3*0.38,cw3*0.68,Math.max(1,ch3*0.18));
+    }
   }
   if(R&&R.monkey){                               /* 赤と黄の横縞＋青の半ズボン */
     ctx.save();
