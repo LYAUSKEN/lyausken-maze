@@ -5151,34 +5151,6 @@ function drawGirlBody(x,y,h,scale,face,cheer){
     }
   }
   ctx.fillStyle=(R?R.dress:(dressOv||GIRL_DRESS));
-  if(R&&R.tank){                                 /* 薄いグレーのタンクトップ */
-    ctx.fillStyle=R.tank;
-    ctx.beginPath();
-    ctx.moveTo(x-w*(side?0.24:0.31),y-h*0.20);
-    ctx.lineTo(x+w*(side?0.24:0.31),y-h*0.20);
-    ctx.lineTo(x+w*(side?0.28:0.37),y+h*0.06);
-    ctx.lineTo(x-w*(side?0.28:0.37),y+h*0.06);
-    ctx.closePath();ctx.fill();
-    ctx.fillStyle=SK;                            // 肩を出す
-    ctx.fillRect(x-w*0.31,y-h*0.20,w*0.09,h*0.09);
-    ctx.fillRect(x+w*0.22,y-h*0.20,w*0.09,h*0.09);
-    if(R.blueFlower){                            // 右側の青い花
-      var fx2=x+w*0.34,fy2=y+h*0.16;
-      ctx.fillStyle='#2f6fd0';
-      for(var pf=0;pf<5;pf++){
-        var pa=Math.PI*2*pf/5-Math.PI/2;
-        ctx.beginPath();
-        ctx.arc(fx2+Math.cos(pa)*w*0.075,fy2+Math.sin(pa)*h*0.035,w*0.062,0,7);
-        ctx.fill();
-      }
-      ctx.fillStyle='#ffd400';
-      ctx.beginPath();ctx.arc(fx2,fy2,w*0.045,0,7);ctx.fill();
-      ctx.strokeStyle='#2f7a45';ctx.lineWidth=Math.max(1,h*0.008);
-      ctx.beginPath();
-      ctx.moveTo(fx2,fy2+h*0.04);ctx.lineTo(fx2-w*0.04,fy2+h*0.14);
-      ctx.stroke();
-    }
-  }
   if(R&&R.jeans){                                /* 白いシャツ＋ジーンズ */
     ctx.fillStyle='#f6f6f6';                     // シャツ
     ctx.beginPath();
@@ -5260,6 +5232,35 @@ function drawGirlBody(x,y,h,scale,face,cheer){
     ctx.closePath();ctx.fill();
   }
   }
+  if(R&&R.tank){                                 /* 薄いグレーのタンクトップ */
+    ctx.fillStyle=R.tank;
+    ctx.beginPath();
+    ctx.moveTo(x-w*(side?0.24:0.31),y-h*0.20);
+    ctx.lineTo(x+w*(side?0.24:0.31),y-h*0.20);
+    ctx.lineTo(x+w*(side?0.28:0.37),y+h*0.06);
+    ctx.lineTo(x-w*(side?0.28:0.37),y+h*0.06);
+    ctx.closePath();ctx.fill();
+    ctx.fillStyle=SK;                            // 肩を出す
+    ctx.fillRect(x-w*0.31,y-h*0.20,w*0.09,h*0.09);
+    ctx.fillRect(x+w*0.22,y-h*0.20,w*0.09,h*0.09);
+    if(R.blueFlower){                            // 右側の青い花
+      var fx2=x+w*0.34,fy2=y+h*0.16;
+      ctx.fillStyle='#2f6fd0';
+      for(var pf=0;pf<5;pf++){
+        var pa=Math.PI*2*pf/5-Math.PI/2;
+        ctx.beginPath();
+        ctx.arc(fx2+Math.cos(pa)*w*0.075,fy2+Math.sin(pa)*h*0.035,w*0.062,0,7);
+        ctx.fill();
+      }
+      ctx.fillStyle='#ffd400';
+      ctx.beginPath();ctx.arc(fx2,fy2,w*0.045,0,7);ctx.fill();
+      ctx.strokeStyle='#2f7a45';ctx.lineWidth=Math.max(1,h*0.008);
+      ctx.beginPath();
+      ctx.moveTo(fx2,fy2+h*0.04);ctx.lineTo(fx2-w*0.04,fy2+h*0.14);
+      ctx.stroke();
+    }
+  }
+
   if(R&&R.frill){                                /* ロリータのフリル */
     ctx.fillStyle='#ffffff';
     for(var fr=0;fr<3;fr++){
