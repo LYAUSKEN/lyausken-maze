@@ -3172,7 +3172,7 @@ function drawIdol(){
       micHead=RS.headset?1:0;
       micHang=RS.hang?1:0;
       shutOv=shut;
-      if(shut)armsStillOv=1;                             // 腕も静かに下ろす
+      if(shut){micMode=0;micSwing=0;}                    // 腕の動きも止める
       var sabi=(RS.wand&&idolT&&((tsec%24)>=12&&(tsec%24)<20));   // サビで魔法
       wandOv=sabi?1:0;
       nodOv=(mtl&&idolT)?Math.max(0,Math.sin(now*0.0105))*0.055:0;   // 首を縦に振る
@@ -5679,7 +5679,7 @@ function drawGirlBody(x,y,h,scale,face,cheer){
   ctx.fillStyle=SK;
   if(cheer===4){                               // マイクを持って歌う
     var ph4=micOv||0;
-    var up4=Math.sin(ph4)*0.35;                // 空いた手の動き
+    var up4=shutOv?0:Math.sin(ph4)*0.35;       // 空いた手の動き（閉じている間は止める）
     var sw4=micSwing*w*0.30;                   // 左右に振る量
     if(micStand)sw4=micSwing*w*0.10;
     if(!micHead&&!micHang&&!(R&&R.noHold)){    /* マイクを持つ腕 */
@@ -6090,14 +6090,16 @@ function drawGirlBody(x,y,h,scale,face,cheer){
     ctx.fillStyle='rgba(255,140,160,0.35)';
     ctx.beginPath();ctx.arc(x-hr*0.60,hy+hr*0.26,hr*0.20,0,7);ctx.fill();
     ctx.beginPath();ctx.arc(x+hr*0.60,hy+hr*0.26,hr*0.20,0,7);ctx.fill();
-    ctx.strokeStyle='#2a1a12';ctx.lineWidth=Math.max(1,hr*0.07);ctx.lineCap='round';
-    ctx.beginPath();
-    ctx.moveTo(x-hr*0.52,hy-hr*0.06);ctx.lineTo(x-hr*0.20,hy-hr*0.06);
-    ctx.moveTo(x+hr*0.52,hy-hr*0.06);ctx.lineTo(x+hr*0.20,hy-hr*0.06);
-    ctx.stroke();
-    ctx.fillStyle='#ffffff';
-    ctx.beginPath();ctx.arc(x-hr*0.30,hy+hr*0.04,hr*0.07,0,7);ctx.fill();
-    ctx.beginPath();ctx.arc(x+hr*0.42,hy+hr*0.04,hr*0.07,0,7);ctx.fill();
+    if(!shutOv){                               /* まつげと瞳のつや（目を開けている時だけ） */
+      ctx.strokeStyle='#2a1a12';ctx.lineWidth=Math.max(1,hr*0.07);ctx.lineCap='round';
+      ctx.beginPath();
+      ctx.moveTo(x-hr*0.52,hy-hr*0.06);ctx.lineTo(x-hr*0.20,hy-hr*0.06);
+      ctx.moveTo(x+hr*0.52,hy-hr*0.06);ctx.lineTo(x+hr*0.20,hy-hr*0.06);
+      ctx.stroke();
+      ctx.fillStyle='#ffffff';
+      ctx.beginPath();ctx.arc(x-hr*0.30,hy+hr*0.04,hr*0.07,0,7);ctx.fill();
+      ctx.beginPath();ctx.arc(x+hr*0.42,hy+hr*0.04,hr*0.07,0,7);ctx.fill();
+    }
     if(micOv){                                 /* 歌っている口 */
       var mo=0.55+0.45*Math.abs(Math.sin(micOv*1.7));
       ctx.fillStyle='#8e2b3e';
