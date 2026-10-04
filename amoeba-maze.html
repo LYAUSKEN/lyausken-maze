@@ -385,9 +385,9 @@ var RARE=[
  {id:'crow',  ja:'カラス',      en:'CROW',      dress:'#ffffff', hair:6,  crow:1,
   jeans:1, sleeve:'#ffffff', stand:1, noHold:1, guitar:1, guitarCol:'#c0392b', sit:1},
  {id:'wolf',  ja:'狼',          en:'WOLF',      dress:'#9aa0a8', hair:-1, wolf:1},
- {id:'dots',  ja:'水玉',        en:'POLKA DOT', dress:'#ffffff', hair:8,  dots:1, shades:1,
+ {id:'dots',  ja:'水玉',        en:'POLKA DOT', dress:'#ffffff', hair:8,  dots:1,
   sweat:1, dotCol:'#d8dadd', headset:1, still:1, hairCol:'#c9a8e8',
-  shadeW:1, armsStill:1, walk:1},
+  armsStill:1, walk:1, skin:'#eef1f7', eyeCol:'#2f7fd0', longBang:1},
  {id:'lolita',ja:'ロリータ',    en:'LOLITA',    dress:'#e0243a', hair:1,  frill:1},
  {id:'metal', ja:'メタル',      en:'HEAVY METAL',dress:'#141418',hair:2,  metal:1},
  {id:'mermaid',ja:'人魚',       en:'MERMAID',   dress:'#2fd0c0', hair:-1, mermaid:1},
@@ -6002,12 +6002,49 @@ function drawGirlBody(x,y,h,scale,face,cheer){
     return;
   }
   if(!back){
-    ctx.fillStyle='#222';
+    ctx.fillStyle=(R&&R.eyeCol)||'#222';
     var er=Math.max(0.7,hr*0.16);
     if(side){ctx.beginPath();ctx.arc(x+f*hr*0.40,hy+hr*0.02,er,0,7);ctx.fill();}
     else{
       ctx.beginPath();ctx.arc(x-hr*0.36,hy+hr*0.10,er,0,7);ctx.fill();
       ctx.beginPath();ctx.arc(x+hr*0.36,hy+hr*0.10,er,0,7);ctx.fill();
+    }
+    if(R&&R.eyeCol){                           /* 瞳の芯とハイライト */
+      ctx.fillStyle='rgba(10,20,40,0.85)';
+      if(side){ctx.beginPath();ctx.arc(x+f*hr*0.40,hy+hr*0.02,er*0.45,0,7);ctx.fill();}
+      else{
+        ctx.beginPath();ctx.arc(x-hr*0.36,hy+hr*0.10,er*0.45,0,7);ctx.fill();
+        ctx.beginPath();ctx.arc(x+hr*0.36,hy+hr*0.10,er*0.45,0,7);ctx.fill();
+      }
+      ctx.fillStyle='rgba(255,255,255,0.9)';
+      if(side){ctx.beginPath();ctx.arc(x+f*hr*0.44,hy-hr*0.02,er*0.28,0,7);ctx.fill();}
+      else{
+        ctx.beginPath();ctx.arc(x-hr*0.32,hy+hr*0.05,er*0.28,0,7);ctx.fill();
+        ctx.beginPath();ctx.arc(x+hr*0.40,hy+hr*0.05,er*0.28,0,7);ctx.fill();
+      }
+    }
+  }
+  if(R&&R.longBang&&!back){                    /* 目を半分隠す前髪 */
+    ctx.fillStyle=HC;
+    if(side){
+      ctx.beginPath();
+      ctx.moveTo(x-f*hr*1.05,hy-hr*0.62);
+      ctx.quadraticCurveTo(x+f*hr*0.30,hy-hr*0.86,x+f*hr*1.02,hy+hr*0.06);
+      ctx.quadraticCurveTo(x+f*hr*0.20,hy-hr*0.30,x-f*hr*1.05,hy-hr*0.18);
+      ctx.closePath();ctx.fill();
+    }else{
+      ctx.beginPath();
+      ctx.moveTo(x-hr*1.04,hy-hr*0.66);
+      ctx.quadraticCurveTo(x-hr*0.10,hy-hr*1.00,x+hr*0.96,hy-hr*0.50);
+      ctx.quadraticCurveTo(x+hr*0.86,hy+hr*0.14,x+hr*0.52,hy+hr*0.06);
+      ctx.quadraticCurveTo(x-hr*0.10,hy-hr*0.18,x-hr*1.02,hy+hr*0.08);
+      ctx.closePath();ctx.fill();
+      ctx.fillStyle='rgba(255,255,255,0.18)';   // 毛先のつや
+      ctx.beginPath();
+      ctx.moveTo(x-hr*0.60,hy-hr*0.52);
+      ctx.quadraticCurveTo(x-hr*0.05,hy-hr*0.70,x+hr*0.44,hy-hr*0.40);
+      ctx.quadraticCurveTo(x-hr*0.05,hy-hr*0.46,x-hr*0.60,hy-hr*0.34);
+      ctx.closePath();ctx.fill();
     }
   }
   if(R&&R.shadow&&!back){                      /* 黒いアイシャドウ */
