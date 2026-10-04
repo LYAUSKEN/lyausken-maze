@@ -385,8 +385,9 @@ var RARE=[
  {id:'crow',  ja:'カラス',      en:'CROW',      dress:'#ffffff', hair:6,  crow:1,
   jeans:1, sleeve:'#ffffff', stand:1, noHold:1, guitar:1, guitarCol:'#c0392b', sit:1},
  {id:'wolf',  ja:'狼',          en:'WOLF',      dress:'#9aa0a8', hair:-1, wolf:1},
- {id:'dots',  ja:'水玉',        en:'POLKA DOT', dress:'#ffffff', hair:7,  dots:1, shades:1,
-  sweat:1, dotCol:'#d8dadd', headset:1, still:1},
+ {id:'dots',  ja:'水玉',        en:'POLKA DOT', dress:'#ffffff', hair:8,  dots:1, shades:1,
+  sweat:1, dotCol:'#d8dadd', headset:1, still:1, hairCol:'#c9a8e8',
+  shadeW:1, armsStill:1, walk:1},
  {id:'lolita',ja:'ロリータ',    en:'LOLITA',    dress:'#e0243a', hair:1,  frill:1},
  {id:'metal', ja:'メタル',      en:'HEAVY METAL',dress:'#141418',hair:2,  metal:1},
  {id:'mermaid',ja:'人魚',       en:'MERMAID',   dress:'#2fd0c0', hair:-1, mermaid:1},
@@ -397,6 +398,7 @@ var rareOv=null,detailOv=false,micOv=0;  // 描画中のレア設定／細密描
 var micMode=0,micSwing=0;                // 0:片手 1:両手 2:左右に振る
 var nodOv=0,micStand=0,micHead=0;        // 首を縦に振る量／スタンド／ヘッドセット
 var micHang=0,wandOv=0;                  // 吊りマイク／魔法の杖
+var walkOv=0,armsStillOv=0;              // 歩く足／腕を下ろす
 var owned={},team=[],tipCoins=0,tipBoost=0;
 var soloName={},soloDone={},liveMode='group',soloId=null,SOLO_NEED=3;
 function ownCount(id){return owned[id]||0;}
@@ -3146,12 +3148,16 @@ function drawIdol(){
     if(soloId){                                /* ソロはマイクを持って歌う */
       var sb2=60000/72;                         // バラードの拍
       var sp2=idolT?((now-idolT)/sb2):0;
-      var stillOv=(rareById(soloId)&&rareById(soloId).still)?0:1;
+      var RW=rareById(soloId)||{};
+      var stillOv=RW.still?0:1;
+      var walkX=RW.walk?Math.sin(tsec*0.22)*S*0.13:0;     // 右から左へゆっくり
+      walkOv=RW.walk?(tsec*1.1):0;
+      armsStillOv=RW.armsStill?1:0;
       var ssway=Math.sin(Math.PI*sp2*0.5)*S*0.012*stillOv;
       var sbob=Math.abs(Math.sin(Math.PI*sp2))*S*0.010*stillOv;
       var slean=Math.sin(Math.PI*sp2*0.5)*0.045*stillOv;
       ctx.save();
-      ctx.translate(p.x+ssway,p.y+sbob+((rareById(soloId)&&rareById(soloId).sit)?S*0.055:0));
+      ctx.translate(p.x+ssway+walkX,p.y+sbob+(RW.sit?S*0.055:0));
       ctx.rotate(slean);
       rareOv=rareById(soloId);dressOv=null;hairOv=0;catOv=false;
       detailOv=true;micOv=idolT?(now*0.0045):0;
@@ -3170,7 +3176,7 @@ function drawIdol(){
         fc4=(Math.floor(tsec/3.5)%2)?'w':'e';
       drawGirl(0,0,S*0.42,1,fc4,idolT?4:0);
       micOv=0;micMode=0;micSwing=0;micStand=0;micHead=0;micHang=0;wandOv=0;
-      nodOv=0;detailOv=false;rareOv=null;
+      walkOv=0;armsStillOv=0;nodOv=0;detailOv=false;rareOv=null;
       if(sabi){                                  /* 紫の輪が広がる */
         var gh2=S*0.42,gw2=gh2*0.5;
         var ox3=gw2*0.76,oy3=-gh2*0.21;          // 変換済みの座標系
@@ -5580,14 +5586,15 @@ function drawGirlBody(x,y,h,scale,face,cheer){
     ctx.lineTo(x+w*(side?0.31:0.41),y+h*0.10);
     ctx.lineTo(x-w*(side?0.31:0.41),y+h*0.10);
     ctx.closePath();ctx.fill();
-    ctx.fillRect(x-w*(side?0.29:0.39),y+h*0.08,w*(side?0.27:0.35),h*0.34);
-    ctx.fillRect(x+w*(side?0.02:0.04),y+h*0.08,w*(side?0.27:0.35),h*0.34);
+    var lgA=walkOv?Math.sin(walkOv)*h*0.030:0;   // ゆっくり歩く
+    ctx.fillRect(x-w*(side?0.29:0.39),y+h*0.08,w*(side?0.27:0.35),h*0.34+lgA);
+    ctx.fillRect(x+w*(side?0.02:0.04),y+h*0.08,w*(side?0.27:0.35),h*0.34-lgA);
     ctx.fillStyle='#e9e9ea';                     // えり・すそのリブ
     ctx.fillRect(x-w*0.20,y-h*0.235,w*0.40,h*0.030);
     ctx.fillRect(x-w*0.41,y+h*0.070,w*0.82,h*0.028);
     ctx.fillStyle='#2b2b33';                     // 靴
-    ctx.fillRect(x-w*0.40,y+h*0.42,w*0.28,h*0.040);
-    ctx.fillRect(x+w*0.12,y+h*0.42,w*0.28,h*0.040);
+    ctx.fillRect(x-w*0.40,y+h*0.42+lgA,w*0.28,h*0.040);
+    ctx.fillRect(x+w*0.12,y+h*0.42-lgA,w*0.28,h*0.040);
   }
   if(R&&(R.flower||R.dots)){                     /* 花柄・水玉 */
     ctx.save();
@@ -5686,7 +5693,17 @@ function drawGirlBody(x,y,h,scale,face,cheer){
       ctx.stroke();
     }
     ctx.fillStyle=SK;
-    if(micHead||micHang){                      /* 手が自由：両腕とも動かす */
+    if(armsStillOv){                           /* 腕は静かに下ろす */
+      ctx.fillStyle=SLV;
+      ctx.save();ctx.translate(x+w*0.44,y-h*0.08);ctx.rotate(0.10);
+      ctx.fillRect(-w*0.12,-h*0.04,w*0.24,h*0.34);ctx.restore();
+      ctx.save();ctx.translate(x-w*0.44,y-h*0.08);ctx.rotate(-0.10);
+      ctx.fillRect(-w*0.12,-h*0.04,w*0.24,h*0.34);ctx.restore();
+      ctx.fillStyle=SK;
+      ctx.beginPath();ctx.arc(x+w*0.47,y+h*0.26,h*0.075,0,7);ctx.fill();
+      ctx.beginPath();ctx.arc(x-w*0.47,y+h*0.26,h*0.075,0,7);ctx.fill();
+    }
+    else if(micHead||micHang){                 /* 手が自由：両腕とも動かす */
       ctx.fillStyle=SLV;
       ctx.save();ctx.translate(x+w*0.46,y-h*0.10);ctx.rotate(-0.55-up4);
       ctx.fillRect(-w*0.13,-h*0.06,w*0.26,h*0.36);ctx.restore();
@@ -5828,6 +5845,19 @@ function drawGirlBody(x,y,h,scale,face,cheer){
       ctx.fillRect(x-hr*1.28,hy-hr*0.5,hr*0.52,hr*3.6);
       ctx.fillRect(x+hr*0.76,hy-hr*0.5,hr*0.52,hr*3.6);
     }else if(R&&R.hair===3){              /* アフロ：首まわりの毛は描かない */
+    }else if(hairOv===8){                 /* 七三分け */
+      ctx.fillRect(x-hr*1.06,hy-hr*0.44,hr*0.28,hr*0.56);
+      ctx.fillRect(x+hr*0.78,hy-hr*0.44,hr*0.28,hr*0.56);
+      ctx.beginPath();                    // 長いほうの前髪
+      ctx.moveTo(x-hr*1.02,hy-hr*0.62);
+      ctx.quadraticCurveTo(x+hr*0.10,hy-hr*1.00,x+hr*0.52,hy-hr*0.40);
+      ctx.quadraticCurveTo(x-hr*0.10,hy-hr*0.62,x-hr*1.02,hy-hr*0.30);
+      ctx.closePath();ctx.fill();
+      ctx.beginPath();                    // 短いほうの前髪
+      ctx.moveTo(x+hr*0.52,hy-hr*0.76);
+      ctx.quadraticCurveTo(x+hr*1.02,hy-hr*0.60,x+hr*1.00,hy-hr*0.24);
+      ctx.quadraticCurveTo(x+hr*0.72,hy-hr*0.52,x+hr*0.46,hy-hr*0.50);
+      ctx.closePath();ctx.fill();
     }else if(hairOv===7){                 /* ベリーショート */
       ctx.fillRect(x-hr*1.04,hy-hr*0.42,hr*0.26,hr*0.42);
       ctx.fillRect(x+hr*0.78,hy-hr*0.42,hr*0.26,hr*0.42);
@@ -5946,13 +5976,27 @@ function drawGirlBody(x,y,h,scale,face,cheer){
     return;
   }
   if(R&&R.shades&&!back){                        /* サングラス */
-    ctx.fillStyle='#16161c';
-    ctx.fillRect(x-hr*0.86,hy-hr*0.04,hr*1.72,hr*0.10);
-    ctx.beginPath();ctx.arc(x-hr*0.42,hy+hr*0.10,hr*0.34,0,7);ctx.fill();
-    ctx.beginPath();ctx.arc(x+hr*0.42,hy+hr*0.10,hr*0.34,0,7);ctx.fill();
-    ctx.fillStyle='rgba(255,255,255,0.35)';
-    ctx.beginPath();ctx.arc(x-hr*0.52,hy+hr*0.02,hr*0.10,0,7);ctx.fill();
-    ctx.beginPath();ctx.arc(x+hr*0.32,hy+hr*0.02,hr*0.10,0,7);ctx.fill();
+    if(R.shadeW){                                /* 横長の白いフレーム */
+      ctx.fillStyle='#ffffff';
+      ctx.fillRect(x-hr*1.12,hy-hr*0.10,hr*2.24,hr*0.44);
+      ctx.fillStyle='#ffc98f';                   // 淡いオレンジのレンズ
+      ctx.fillRect(x-hr*1.00,hy-hr*0.03,hr*0.88,hr*0.28);
+      ctx.fillRect(x+hr*0.12,hy-hr*0.03,hr*0.88,hr*0.28);
+      ctx.fillStyle='rgba(255,255,255,0.55)';    // 反射
+      ctx.fillRect(x-hr*0.94,hy-hr*0.01,hr*0.26,hr*0.10);
+      ctx.fillRect(x+hr*0.18,hy-hr*0.01,hr*0.26,hr*0.10);
+      ctx.fillStyle='#ffffff';                   // つる
+      ctx.fillRect(x-hr*1.18,hy-hr*0.06,hr*0.10,hr*0.16);
+      ctx.fillRect(x+hr*1.08,hy-hr*0.06,hr*0.10,hr*0.16);
+    }else{
+      ctx.fillStyle='#16161c';
+      ctx.fillRect(x-hr*0.86,hy-hr*0.04,hr*1.72,hr*0.10);
+      ctx.beginPath();ctx.arc(x-hr*0.42,hy+hr*0.10,hr*0.34,0,7);ctx.fill();
+      ctx.beginPath();ctx.arc(x+hr*0.42,hy+hr*0.10,hr*0.34,0,7);ctx.fill();
+      ctx.fillStyle='rgba(255,255,255,0.35)';
+      ctx.beginPath();ctx.arc(x-hr*0.52,hy+hr*0.02,hr*0.10,0,7);ctx.fill();
+      ctx.beginPath();ctx.arc(x+hr*0.32,hy+hr*0.02,hr*0.10,0,7);ctx.fill();
+    }
     rareOv=null;hairOv=0;catOv=false;
     return;
   }
