@@ -3149,9 +3149,10 @@ function drawIdol(){
       var sb2=60000/72;                         // バラードの拍
       var sp2=idolT?((now-idolT)/sb2):0;
       var RW=rareById(soloId)||{};
+      var tsec0=idolT?((now-idolT)/1000):0;              // この時点で秒を求める
       var stillOv=RW.still?0:1;
-      var walkX=RW.walk?Math.sin(tsec*0.22)*S*0.13:0;     // 右から左へゆっくり
-      walkOv=RW.walk?(tsec*1.1):0;
+      var walkX=RW.walk?Math.sin(tsec0*0.22)*S*0.13:0;    // 右から左へゆっくり
+      walkOv=RW.walk?(tsec0*1.1):0;
       armsStillOv=RW.armsStill?1:0;
       var ssway=Math.sin(Math.PI*sp2*0.5)*S*0.012*stillOv;
       var sbob=Math.abs(Math.sin(Math.PI*sp2))*S*0.010*stillOv;
