@@ -3338,7 +3338,10 @@ function drawIdol(){
     ctx.restore();
   }
   if(lol) drawSofa(ox2+S*0.50,oy2+S*0.895,S*0.62);
-  if(pno) drawPianoBench(ox2+S*0.26,oy2+S*0.895,S*0.17);
+  if(pno){
+    drawGrandPiano(ox2+S*0.62,oy2+S*0.895,S*0.74,lit);
+    drawPianoBench(ox2+S*0.26,oy2+S*0.895,S*0.17);
+  }
   if(crw){                                      // 茶色いフローリングと椅子
     ctx.save();
     ctx.beginPath();ctx.rect(ox2,oy2+S*0.86,S,S*0.14);ctx.clip();
@@ -3474,7 +3477,6 @@ function drawIdol(){
     ctx.restore();
     dressOv=null;hairOv=0;catOv=false;rareOv=null;
   }
-  if(pno) drawGrandPiano(ox2+S*0.62,oy2+S*0.895,S*0.74,lit);
   /* 緑のレーザー */
   ctx.save();
   ctx.beginPath();ctx.rect(ox2,oy2,S,S);ctx.clip();
@@ -5937,16 +5939,19 @@ function drawGirlBody(x,y,h,scale,face,cheer){
       ctx.stroke();
     }
     ctx.fillStyle=SK;
-    if(bodyS){                                 /* ピアノを弾く腕：両腕とも鍵盤へ */
-      var pl=shutOv?0:Math.sin(ph4*1.6)*0.10;
+    if(bodyS){                                 /* ピアノを弾く腕：鍵盤の上を左右に */
+      var slide=shutOv?0:Math.sin(ph4*1.1)*w*0.22;        // 鍵盤をなぞる左右の動き
+      var slide2=shutOv?0:Math.sin(ph4*1.1+1.1)*w*0.18;
       ctx.fillStyle=SLV;
-      ctx.save();ctx.translate(x+w*0.26,y-h*0.08);ctx.rotate(-0.78+pl);
+      ctx.save();ctx.translate(x+w*0.24+slide*0.45,y-h*0.08);
+      ctx.rotate(-0.80+slide*0.012);
       ctx.fillRect(-w*0.13,-h*0.04,w*0.26,h*0.40);ctx.restore();
-      ctx.save();ctx.translate(x+w*0.42,y-h*0.04);ctx.rotate(-0.95-pl);
+      ctx.save();ctx.translate(x+w*0.40+slide2*0.45,y-h*0.04);
+      ctx.rotate(-0.96+slide2*0.012);
       ctx.fillRect(-w*0.12,-h*0.04,w*0.24,h*0.36);ctx.restore();
       ctx.fillStyle=SK;
-      ctx.beginPath();ctx.arc(x+w*0.62,y-h*0.10+Math.sin(ph4*1.6)*h*0.012,h*0.075,0,7);ctx.fill();
-      ctx.beginPath();ctx.arc(x+w*0.80,y-h*0.06-Math.sin(ph4*1.6)*h*0.012,h*0.072,0,7);ctx.fill();
+      ctx.beginPath();ctx.arc(x+w*0.60+slide,y-h*0.10,h*0.075,0,7);ctx.fill();
+      ctx.beginPath();ctx.arc(x+w*0.78+slide2,y-h*0.06,h*0.072,0,7);ctx.fill();
     }
     else if(armsStillOv){                      /* 腕は静かに下ろす */
       ctx.fillStyle=SLV;
