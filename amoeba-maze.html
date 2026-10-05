@@ -380,7 +380,8 @@ var RARE=[
  {id:'stripe',ja:'ストライプ',  en:'STRIPES',   dress:'#ffffff', hair:0,  vstripe:1},
  {id:'witch', ja:'魔女',        en:'WITCH',     dress:'#15151c', hair:0,  hat:1,
   pom:1, redTee:1, knee:1, hang:1, wand:1},
- {id:'afro2', ja:'横縞お団子',  en:'STRIPED BUN',dress:'#ffffff', hair:5,  hstripe:1},
+ {id:'afro2', ja:'横縞お団子',  en:'STRIPED BUN',dress:'#ffffff', hair:5,  hstripe:1,
+  sit:1, noHold:1, hang:1, piano:1},
  {id:'flower',ja:'花柄',        en:'FLORAL',    dress:'#fff3e0', hair:0,  flower:1},
  {id:'crow',  ja:'カラス',      en:'CROW',      dress:'#ffffff', hair:6,  crow:1,
   jeans:1, sleeve:'#ffffff', stand:1, noHold:1, guitar:1, guitarCol:'#c0392b', sit:1},
@@ -2321,6 +2322,111 @@ function drawHeart(x,y,r,col,a){
   ctx.closePath();ctx.fill();
   ctx.restore();
 }
+function drawNavyCurtain(ox2,oy2,S,lit){       /* 紺色のカーテンと吊り電球1灯 */
+  ctx.save();
+  ctx.beginPath();ctx.rect(ox2,oy2,S,S*0.88);ctx.clip();
+  /* ひだ */
+  var folds=13;
+  for(var i=0;i<folds;i++){
+    var fx=ox2+S*(i/folds),fw=S/folds;
+    var dark=(i%2)?0.16:0.06;
+    ctx.fillStyle='rgba(6,10,28,'+dark+')';
+    ctx.fillRect(fx,oy2,fw,S*0.88);
+    ctx.strokeStyle='rgba(90,120,210,'+(0.10+0.08*lit)+')';
+    ctx.lineWidth=Math.max(1,S*0.004);
+    ctx.beginPath();
+    ctx.moveTo(fx+fw*0.5,oy2);
+    ctx.quadraticCurveTo(fx+fw*0.5+Math.sin(i*1.7)*S*0.010,oy2+S*0.46,fx+fw*0.5,oy2+S*0.88);
+    ctx.stroke();
+  }
+  /* 上部のひだ寄せ */
+  var tg2=ctx.createLinearGradient(0,oy2,0,oy2+S*0.14);
+  tg2.addColorStop(0,'rgba(5,8,24,0.55)');
+  tg2.addColorStop(1,'rgba(5,8,24,0)');
+  ctx.fillStyle=tg2;ctx.fillRect(ox2,oy2,S,S*0.14);
+  /* 吊り下げた電球1灯（ピアノの上） */
+  var bx=ox2+S*0.5,by=oy2+S*0.30;
+  ctx.strokeStyle='rgba(50,48,60,0.85)';ctx.lineWidth=Math.max(1,S*0.004);
+  ctx.beginPath();ctx.moveTo(bx,oy2);ctx.lineTo(bx,by);ctx.stroke();
+  var bg=ctx.createRadialGradient(bx,by,S*0.006,bx,by,S*0.22);
+  bg.addColorStop(0,'rgba(255,236,185,'+(0.55*lit)+')');
+  bg.addColorStop(1,'rgba(255,228,165,0)');
+  ctx.fillStyle=bg;
+  ctx.beginPath();ctx.arc(bx,by,S*0.22,0,7);ctx.fill();
+  ctx.fillStyle='rgba(255,244,205,'+(0.80+0.15*lit)+')';
+  ctx.beginPath();ctx.arc(bx,by,S*0.022,0,7);ctx.fill();
+  ctx.fillStyle='rgba(60,58,66,0.9)';
+  ctx.fillRect(bx-S*0.010,by-S*0.038,S*0.020,S*0.016);
+  ctx.restore();
+}
+function drawGrandPiano(cx,cy,pw,lit){         /* 白いグランドピアノ */
+  var ph=pw*0.60;
+  ctx.save();
+  ctx.fillStyle='rgba(0,0,0,0.38)';            // 影
+  ctx.beginPath();
+  ctx.ellipse?ctx.ellipse(cx,cy+ph*0.05,pw*0.60,ph*0.10,0,0,7):ctx.arc(cx,cy,pw*0.5,0,7);
+  ctx.fill();
+  /* 脚 */
+  ctx.fillStyle='#d8d4cc';
+  ctx.fillRect(cx-pw*0.48,cy-ph*0.34,pw*0.055,ph*0.34);
+  ctx.fillRect(cx+pw*0.42,cy-ph*0.34,pw*0.055,ph*0.34);
+  ctx.fillRect(cx-pw*0.04,cy-ph*0.30,pw*0.050,ph*0.30);
+  /* 本体（カーブした胴） */
+  ctx.fillStyle='#f7f5f0';
+  ctx.beginPath();
+  ctx.moveTo(cx-pw*0.54,cy-ph*0.34);
+  ctx.lineTo(cx-pw*0.54,cy-ph*0.52);
+  ctx.quadraticCurveTo(cx+pw*0.10,cy-ph*0.70,cx+pw*0.56,cy-ph*0.40);
+  ctx.quadraticCurveTo(cx+pw*0.60,cy-ph*0.30,cx+pw*0.46,cy-ph*0.30);
+  ctx.lineTo(cx-pw*0.54,cy-ph*0.30);
+  ctx.closePath();ctx.fill();
+  ctx.strokeStyle='rgba(120,116,110,0.5)';ctx.lineWidth=Math.max(1,pw*0.006);
+  ctx.stroke();
+  /* 開いた屋根 */
+  ctx.fillStyle='#fbfaf6';
+  ctx.beginPath();
+  ctx.moveTo(cx-pw*0.50,cy-ph*0.54);
+  ctx.lineTo(cx-pw*0.26,cy-ph*1.22);
+  ctx.quadraticCurveTo(cx+pw*0.24,cy-ph*1.30,cx+pw*0.54,cy-ph*0.46);
+  ctx.quadraticCurveTo(cx+pw*0.10,cy-ph*0.74,cx-pw*0.50,cy-ph*0.54);
+  ctx.closePath();ctx.fill();
+  ctx.strokeStyle='rgba(120,116,110,0.45)';ctx.stroke();
+  ctx.strokeStyle='#cfccc4';ctx.lineWidth=Math.max(1,pw*0.008);   // 支え棒
+  ctx.beginPath();
+  ctx.moveTo(cx+pw*0.30,cy-ph*0.52);ctx.lineTo(cx+pw*0.20,cy-ph*1.02);
+  ctx.stroke();
+  /* 鍵盤 */
+  ctx.fillStyle='#ffffff';
+  ctx.fillRect(cx-pw*0.54,cy-ph*0.40,pw*0.72,ph*0.085);
+  ctx.fillStyle='#1b1b20';
+  for(var k=0;k<13;k++){
+    if(k%7===2||k%7===6)continue;
+    ctx.fillRect(cx-pw*0.52+k*pw*0.054,cy-ph*0.40,pw*0.020,ph*0.050);
+  }
+  ctx.fillStyle='rgba(0,0,0,0.12)';
+  ctx.fillRect(cx-pw*0.54,cy-ph*0.318,pw*0.72,ph*0.012);
+  /* 天板の映り込み */
+  ctx.fillStyle='rgba(255,255,255,'+(0.16*lit)+')';
+  ctx.beginPath();
+  ctx.moveTo(cx-pw*0.44,cy-ph*0.56);
+  ctx.quadraticCurveTo(cx+pw*0.06,cy-ph*0.68,cx+pw*0.40,cy-ph*0.50);
+  ctx.quadraticCurveTo(cx+pw*0.04,cy-ph*0.58,cx-pw*0.44,cy-ph*0.52);
+  ctx.closePath();ctx.fill();
+  ctx.restore();
+}
+function drawPianoBench(cx,cy,bw){             /* ピアノの椅子 */
+  ctx.save();
+  ctx.fillStyle='rgba(0,0,0,0.32)';
+  ctx.beginPath();
+  ctx.ellipse?ctx.ellipse(cx,cy+bw*0.04,bw*0.50,bw*0.09,0,0,7):ctx.arc(cx,cy,bw*0.4,0,7);
+  ctx.fill();
+  ctx.fillStyle='#d8d4cc';
+  ctx.fillRect(cx-bw*0.40,cy-bw*0.46,bw*0.07,bw*0.46);
+  ctx.fillRect(cx+bw*0.33,cy-bw*0.46,bw*0.07,bw*0.46);
+  ctx.fillStyle='#efece6';
+  ctx.fillRect(cx-bw*0.48,cy-bw*0.56,bw*0.96,bw*0.11);
+  ctx.restore();
+}
 function drawSnowBack(ox2,oy2,S,lit){          /* 雪と街灯2本 */
   ctx.save();
   ctx.beginPath();ctx.rect(ox2,oy2,S,S*0.90);ctx.clip();
@@ -2915,8 +3021,10 @@ function drawIdol(){
   var bld=(soloId==='bald');                   // 坊主は大樹と鳥
   var wch=(soloId==='witch');                  // 魔女は虹の縞と水晶玉
   var dts=(soloId==='dots');                   // 水玉は雪と街灯
+  var pno=(soloId==='afro2');                  // 横縞お団子は白いピアノ
   ctx.fillStyle=sea?'#04223a':(mtl?'#120409':(skt?'#1a1814':(stp?'#0e2733':(flw?'#1b1020':
-    (lng?'#e9e6e0':(kjy?'#07170c':(afr?'#2a1630':(crw?'#121318':(bld?'#0a1410':'#05050c'))))))))); 
+    (lng?'#e9e6e0':(kjy?'#07170c':(afr?'#2a1630':(crw?'#121318':(bld?'#0a1410':
+    (pno?'#0b1026':'#05050c')))))))))); 
   ctx.fillRect(0,0,W,H);
   /* 舞台の正方形 */
   if(sea){
@@ -2925,6 +3033,12 @@ function drawIdol(){
     sg.addColorStop(0.55,'#0a5468');
     sg.addColorStop(1,'#187c76');
     ctx.fillStyle=sg;
+  }else if(pno){
+    var qg=ctx.createLinearGradient(0,oy2,0,oy2+S);
+    qg.addColorStop(0,'#141c3e');               // 紺のカーテン
+    qg.addColorStop(0.6,'#1a2550');
+    qg.addColorStop(1,'#101838');
+    ctx.fillStyle=qg;
   }else if(dts){
     var dg=ctx.createLinearGradient(0,oy2,0,oy2+S);
     dg.addColorStop(0,'#0d1626');               // 冬の夜
@@ -3044,6 +3158,7 @@ function drawIdol(){
       ctx.closePath();ctx.fill();
     }
   }
+  if(pno) drawNavyCurtain(ox2,oy2,S,lit);
   if(dts) drawSnowBack(ox2,oy2,S,lit);
   if(wch) drawRainbowBack(ox2,oy2,S,lit);
   if(bld) drawBigTrees(ox2,oy2,S,lit);
@@ -3055,7 +3170,7 @@ function drawIdol(){
   if(flw) drawCityBack(ox2,oy2,S,lit);
   if(skt) drawGraffiti(ox2,oy2,S,lit);
   /* 舞台の床 */
-  ctx.fillStyle=sea?'#b9ac82':(mtl?'#1a1216':(skt?'#6f6855':(crw?'#6b4a2e':(bld?'#2c4a28':(dts?'#1b2740':'#2a1636')))));  // 砂浜（夜の色）
+  ctx.fillStyle=sea?'#b9ac82':(mtl?'#1a1216':(skt?'#6f6855':(crw?'#6b4a2e':(bld?'#2c4a28':(dts?'#1b2740':(pno?'#2a2036':'#2a1636'))))));  // 砂浜（夜の色）
   ctx.fillRect(ox2,oy2+S*0.86,S,S*0.14);
   ctx.fillStyle=sea?'rgba(255,255,255,0.35)':'rgba(255,255,255,0.08)';
   ctx.fillRect(ox2,oy2+S*0.86,S,2);
@@ -3112,6 +3227,7 @@ function drawIdol(){
     }
     ctx.restore();
   }
+  if(pno) drawPianoBench(ox2+S*0.50,oy2+S*0.885,S*0.17);
   if(crw){                                      // 茶色いフローリングと椅子
     ctx.save();
     ctx.beginPath();ctx.rect(ox2,oy2+S*0.86,S,S*0.14);ctx.clip();
@@ -3246,6 +3362,7 @@ function drawIdol(){
     ctx.restore();
     dressOv=null;hairOv=0;catOv=false;rareOv=null;
   }
+  if(pno) drawGrandPiano(ox2+S*0.50,oy2+S*0.885,S*0.56,lit);
   /* 緑のレーザー */
   ctx.save();
   ctx.beginPath();ctx.rect(ox2,oy2,S,S);ctx.clip();
@@ -3322,7 +3439,7 @@ function drawIdol(){
     }
     ctx.globalAlpha=1;
   }
-  var lasN=(idolT&&!skt&&!afr&&!kjy&&!crw&&!bld&&!dts)?(sea?2:(wch?4:6)):0;
+  var lasN=(idolT&&!skt&&!afr&&!kjy&&!crw&&!bld&&!dts&&!pno)?(sea?2:(wch?4:6)):0;
   var lasSpd=sea?0.000275:(stp?0.000275:(flw?0.00037:(wch?0.00030:0.0011)));
   var lasW=flw?2:1;                            // 花柄は太く
   for(i=0;i<lasN;i++){
