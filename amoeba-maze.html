@@ -3340,7 +3340,7 @@ function drawIdol(){
   if(lol) drawSofa(ox2+S*0.50,oy2+S*0.895,S*0.62);
   if(pno){
     drawGrandPiano(ox2+S*0.62,oy2+S*0.895,S*0.74,lit);
-    drawPianoBench(ox2+S*0.26,oy2+S*0.895,S*0.17);
+    drawPianoBench(ox2+S*0.26,oy2+S*0.895-S*0.193,S*0.17);
   }
   if(crw){                                      // 茶色いフローリングと椅子
     ctx.save();
@@ -3391,7 +3391,7 @@ function drawIdol(){
       var slean=Math.sin(Math.PI*sp2*0.5)*0.045*stillOv;
       ctx.save();
       ctx.translate(p.x+ssway+walkX+(RW.offX?S*RW.offX:0),
-                    p.y+sbob+(RW.seat?S*0.030:(RW.sit?S*0.055:0)));
+                    p.y+sbob+(RW.seat?-S*0.193:(RW.sit?S*0.055:0)));
       ctx.rotate(slean);
       rareOv=rareById(soloId);dressOv=null;hairOv=0;catOv=false;
       detailOv=true;micOv=idolT?(now*0.0045):0;
@@ -5950,8 +5950,6 @@ function drawGirlBody(x,y,h,scale,face,cheer){
       ctx.rotate(-0.96+slide2*0.012);
       ctx.fillRect(-w*0.12,-h*0.04,w*0.24,h*0.36);ctx.restore();
       ctx.fillStyle=SK;
-      ctx.beginPath();ctx.arc(x+w*0.60+slide,y-h*0.10,h*0.075,0,7);ctx.fill();
-      ctx.beginPath();ctx.arc(x+w*0.78+slide2,y-h*0.06,h*0.072,0,7);ctx.fill();
     }
     else if(armsStillOv){                      /* 腕は静かに下ろす */
       ctx.fillStyle=SLV;
