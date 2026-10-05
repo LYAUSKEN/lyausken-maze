@@ -381,7 +381,8 @@ var RARE=[
  {id:'witch', ja:'魔女',        en:'WITCH',     dress:'#15151c', hair:0,  hat:1,
   pom:1, redTee:1, knee:1, hang:1, wand:1},
  {id:'afro2', ja:'横縞お団子',  en:'STRIPED BUN',dress:'#ffffff', hair:5,  hstripe:1,
-  sit:1, noHold:1, hang:1, piano:1, still:1, offX:-0.32, bodySide:1, seat:1},
+  sit:1, noHold:1, hang:1, piano:1, still:1, offX:-0.32, bodySide:1, seat:1,
+  slowMouth:1, eyesLoop:1},
  {id:'flower',ja:'花柄',        en:'FLORAL',    dress:'#fff3e0', hair:0,  flower:1},
  {id:'crow',  ja:'カラス',      en:'CROW',      dress:'#ffffff', hair:6,  crow:1,
   jeans:1, sleeve:'#ffffff', stand:1, noHold:1, guitar:1, guitarCol:'#c0392b', sit:1},
@@ -401,6 +402,7 @@ var nodOv=0,micStand=0,micHead=0;        // 首を縦に振る量／スタンド
 var micHang=0,wandOv=0;                  // 吊りマイク／魔法の杖
 var walkOv=0,armsStillOv=0;              // 歩く足／腕を下ろす
 var shutOv=0;                            // 目を閉じて歌う
+var slowMouthOv=0;                       // 口の動きをゆっくりに
 var owned={},team=[],tipCoins=0,tipBoost=0;
 var soloName={},soloDone={},liveMode='group',soloId=null,SOLO_NEED=3;
 function ownCount(id){return owned[id]||0;}
@@ -3382,6 +3384,7 @@ function drawIdol(){
       var RW=rareById(soloId)||{};
       var tsec0=idolT?((now-idolT)/1000):0;              // この時点で秒を求める
       var shut=(RW.eyesShut&&idolT&&tsec0<idolLen()/2000)?1:0;  // 前半は目を閉じる
+      if(RW.eyesLoop&&idolT)shut=((tsec0%9)<6.6)?1:0;     // 閉じて歌い、時々開く
       var stillOv=(RW.still||shut)?0:1;                  // 閉じている間は踊らない
       var walkX=RW.walk?Math.sin(tsec0*0.22)*S*0.13:0;    // 右から左へゆっくり
       walkOv=RW.walk?(tsec0*1.1):0;
@@ -3403,6 +3406,7 @@ function drawIdol(){
       micHead=RS.headset?1:0;
       micHang=RS.hang?1:0;
       shutOv=shut;
+      slowMouthOv=RS.slowMouth?1:0;
       if(shut){micMode=0;micSwing=0;}                    // 腕の動きも止める
       var sabi=(RS.wand&&idolT&&((tsec%24)>=12&&(tsec%24)<20));   // サビで魔法
       wandOv=sabi?1:0;
@@ -5931,7 +5935,7 @@ function drawGirlBody(x,y,h,scale,face,cheer){
       ctx.fillRect(-w*0.13,-h*0.26,w*0.26,h*0.32);ctx.restore();
       ctx.fillStyle=SK;
     }
-    if(!micStand&&!micHead){                   /* コード（手持ちのとき） */
+    if(!micStand&&!micHead&&!micHang){         /* コード（手持ちのとき） */
       ctx.strokeStyle='#2b2b33';ctx.lineWidth=Math.max(1,h*0.018);
       ctx.beginPath();
       ctx.moveTo(x+w*0.40+sw4,y-h*0.02);
@@ -5940,8 +5944,8 @@ function drawGirlBody(x,y,h,scale,face,cheer){
     }
     ctx.fillStyle=SK;
     if(bodyS){                                 /* ピアノを弾く腕：鍵盤の上を左右に */
-      var slide=shutOv?0:Math.sin(ph4*1.1)*w*0.22;        // 鍵盤をなぞる左右の動き
-      var slide2=shutOv?0:Math.sin(ph4*1.1+1.1)*w*0.18;
+      var slide=Math.sin(ph4*1.1)*w*0.22;        // 鍵盤をなぞる左右の動き（閉眼中も弾く）
+      var slide2=Math.sin(ph4*1.1+1.1)*w*0.18;
       ctx.fillStyle=SLV;
       ctx.save();ctx.translate(x+w*0.24+slide*0.45,y-h*0.08);
       ctx.rotate(-0.80+slide*0.012);
@@ -6354,7 +6358,8 @@ function drawGirlBody(x,y,h,scale,face,cheer){
       ctx.beginPath();ctx.arc(x+hr*0.42,hy+hr*0.04,hr*0.07,0,7);ctx.fill();
     }
     if(micOv){                                 /* 歌っている口 */
-      var mo=0.55+0.45*Math.abs(Math.sin(micOv*1.7));
+      var msp=slowMouthOv?0.567:1.7;           // ゆっくり歌う子は1/3の速さ
+      var mo=0.55+0.45*Math.abs(Math.sin(micOv*msp));
       ctx.fillStyle='#8e2b3e';
       ctx.beginPath();
       ctx.ellipse?ctx.ellipse(x,hy+hr*0.52,hr*0.17,hr*0.20*mo,0,0,7)
