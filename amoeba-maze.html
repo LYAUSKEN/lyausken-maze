@@ -3340,7 +3340,7 @@ function drawIdol(){
   if(lol) drawSofa(ox2+S*0.50,oy2+S*0.895,S*0.62);
   if(pno){
     drawGrandPiano(ox2+S*0.62,oy2+S*0.895,S*0.74,lit);
-    drawPianoBench(ox2+S*0.26,oy2+S*0.895-S*0.193,S*0.17);
+    drawPianoBench(ox2+S*0.26,oy2+S*0.895-S*0.075,S*0.17);
   }
   if(crw){                                      // 茶色いフローリングと椅子
     ctx.save();
@@ -3391,7 +3391,7 @@ function drawIdol(){
       var slean=Math.sin(Math.PI*sp2*0.5)*0.045*stillOv;
       ctx.save();
       ctx.translate(p.x+ssway+walkX+(RW.offX?S*RW.offX:0),
-                    p.y+sbob+(RW.seat?-S*0.193:(RW.sit?S*0.055:0)));
+                    p.y+sbob+(RW.seat?-S*0.075:(RW.sit?S*0.055:0)));
       ctx.rotate(slean);
       rareOv=rareById(soloId);dressOv=null;hairOv=0;catOv=false;
       detailOv=true;micOv=idolT?(now*0.0045):0;
