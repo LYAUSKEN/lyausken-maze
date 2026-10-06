@@ -6460,11 +6460,12 @@ function drawGirlBody(x,y,h,scale,face,cheer){
     }
   }
   if(R&&R.bandana&&!back){                       /* 頭を巻いたバンダナ */
-    var bnR=hr*1.04,bnB=hy-hr*0.42;              // 頭の輪郭と巻き口の高さ
+    var bnR=hr*1.14,bnCy=hy-hr*0.30;             // 髪のてっぺんと同じ円
+    var bnT=bnCy-bnR,bnB=hy-hr*0.42;             // バンダナのトップと巻き口の高さ
     var BN=['#b9a3d6','#9e4a28','#f08fb4'];      // 淡いパープル／バーントシェンナ／ピンク
     ctx.save();
     ctx.beginPath();                             // 頭の丸みの内側だけに描く
-    ctx.arc(x,hy,bnR,Math.PI,Math.PI*2);
+    ctx.arc(x,bnCy,bnR,Math.PI,Math.PI*2);
     ctx.lineTo(x+bnR,bnB);
     ctx.lineTo(x-bnR,bnB);
     ctx.closePath();
@@ -6472,14 +6473,14 @@ function drawGirlBody(x,y,h,scale,face,cheer){
     var bnW=bnR*2/9;                             // 縦ストライプ（9本）
     for(var bq=0;bq<9;bq++){
       ctx.fillStyle=BN[bq%3];
-      ctx.fillRect(x-bnR+bq*bnW,hy-hr*1.35,bnW+0.6,hr*1.35);
+      ctx.fillRect(x-bnR+bq*bnW,bnT,bnW+0.6,bnB-bnT);
     }
     var bsh=ctx.createLinearGradient(x-bnR,0,x+bnR,0);
     bsh.addColorStop(0,'rgba(0,0,0,0.26)');      // 丸みの陰影
     bsh.addColorStop(0.38,'rgba(255,255,255,0.14)');
     bsh.addColorStop(1,'rgba(0,0,0,0.22)');
     ctx.fillStyle=bsh;
-    ctx.fillRect(x-bnR,hy-hr*1.35,bnR*2,hr*1.35);
+    ctx.fillRect(x-bnR,bnT,bnR*2,bnB-bnT);
     ctx.fillStyle='rgba(0,0,0,0.18)';            // 巻き口のふち
     ctx.fillRect(x-bnR,bnB-hr*0.10,bnR*2,hr*0.10);
     ctx.restore();
