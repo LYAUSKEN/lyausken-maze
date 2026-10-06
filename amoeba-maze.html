@@ -6425,20 +6425,43 @@ function drawGirlBody(x,y,h,scale,face,cheer){
     for(var vs=-4;vs<=4;vs++)ctx.fillRect(x+vs*w*0.16,y-h*0.22,w*0.08,h*0.64);
     ctx.restore();
   }
-  if(R&&R.uneck){                                /* U型のネック：首元から胸元を開ける */
+  if(R&&R.uneck){                                /* U型のネック＋下に着た水色のTシャツ */
     var unW=w*(side?0.15:0.23),unD=y+h*0.055;
+    var TEE='#8fd8f0',TEE2='#6fc4e2';
+    ctx.fillStyle=TEE;                            // 開きはTシャツで覆う
+    ctx.beginPath();
+    ctx.moveTo(x-unW,y-h*0.235);
+    ctx.quadraticCurveTo(x-unW*1.02,unD-h*0.02,x,unD);   // 左の肩口から胸元へ
+    ctx.quadraticCurveTo(x+unW*1.02,unD-h*0.02,x+unW,y-h*0.235);
+    ctx.closePath();ctx.fill();
+    ctx.fillStyle='rgba(60,140,175,0.16)';        // 胸元のやわらかい陰
+    ctx.beginPath();
+    ctx.moveTo(x-unW*0.78,y-h*0.055);
+    ctx.quadraticCurveTo(x,unD-h*0.015,x+unW*0.78,y-h*0.055);
+    ctx.quadraticCurveTo(x,y+h*0.010,x-unW*0.78,y-h*0.055);
+    ctx.closePath();ctx.fill();
+    /* Tシャツの首周り：ゆるく下にカーブ */
+    var neW=unW*0.82,neD=y-h*0.145;               // 中央でここまで下がる
     ctx.fillStyle=SK;
     ctx.beginPath();
-    ctx.moveTo(x-unW,y-h*0.23);
-    ctx.quadraticCurveTo(x-unW*1.02,unD-h*0.02,x,unD);   // 左の肩口から胸元へ
-    ctx.quadraticCurveTo(x+unW*1.02,unD-h*0.02,x+unW,y-h*0.23);
+    ctx.moveTo(x-neW,y-h*0.235);
+    ctx.quadraticCurveTo(x-neW*0.62,neD,x,neD);   // 左肩口から下にカーブ
+    ctx.quadraticCurveTo(x+neW*0.62,neD,x+neW,y-h*0.235);
     ctx.closePath();ctx.fill();
-    ctx.strokeStyle='rgba(0,0,0,0.12)';           // 開きのふち
+    ctx.strokeStyle=TEE2;                         // えりのリブ
+    ctx.lineWidth=Math.max(1.2,h*0.014);
+    ctx.lineCap='round';
+    ctx.beginPath();
+    ctx.moveTo(x-neW,y-h*0.228);
+    ctx.quadraticCurveTo(x-neW*0.62,neD,x,neD);
+    ctx.quadraticCurveTo(x+neW*0.62,neD,x+neW,y-h*0.228);
+    ctx.stroke();
+    ctx.strokeStyle='rgba(0,0,0,0.12)';           // ワンピースの開きのふち
     ctx.lineWidth=Math.max(1,h*0.008);
     ctx.beginPath();
-    ctx.moveTo(x-unW,y-h*0.22);
+    ctx.moveTo(x-unW,y-h*0.225);
     ctx.quadraticCurveTo(x-unW*1.02,unD-h*0.02,x,unD);
-    ctx.quadraticCurveTo(x+unW*1.02,unD-h*0.02,x+unW,y-h*0.22);
+    ctx.quadraticCurveTo(x+unW*1.02,unD-h*0.02,x+unW,y-h*0.225);
     ctx.stroke();
     ctx.fillStyle=SK;                             // 肩も広めに出す
     ctx.fillRect(x-w*(side?0.27:0.35),y-h*0.23,w*0.11,h*0.07);
