@@ -431,6 +431,12 @@ function soloOK(id){return ownCount(id)>=SOLO_NEED;}
 function soloList(){var a=[];for(var i=0;i<RARE.length;i++)if(soloDone[RARE[i].id])a.push(RARE[i].id);return a;}
 function soloLabel(id){var R=rareById(id);return soloName[id]||(R&&R.nm)||(R&&R.ja)||id;}
 function soloSong(id){var R=rareById(id);return (R&&R.song)||'';}
+function soloLyrics(id){                       /* 歌詞。行で渡されたらつなげる */
+  var R=rareById(id);
+  if(!R||!R.lyrics)return '';
+  var L=R.lyrics;
+  return (typeof L==='string')?L:L.join('　　　');
+}
 var RARE_BASE=0.14;                    // レアが出る基本の確率
 function ownedList(){var a=[];for(var i=0;i<RARE.length;i++)if(owned[RARE[i].id])a.push(RARE[i].id);return a;}
 function rareChance(){return Math.min(0.6,RARE_BASE+tipBoost);}
@@ -3673,6 +3679,9 @@ function drawIdol(){
   var mky=(soloId==='monkey');                 // おさるを抱っこはジャマイカの夕方
   var swm=(soloId==='swim');                   // 水着は夏の海と砂浜
   var wlf=(soloId==='wolf');                   // 狼は壁の狼の頭と鏡の床
+  var padCol=sea?'#04223a':(mtl?'#120409':(skt?'#1a1814':(stp?'#0e2733':(flw?'#1b1020':
+    (lng?'#e9e6e0':(kjy?'#07170c':(afr?'#2a1630':(crw?'#121318':(bld?'#0a1410':
+    (pno?'#0b1026':(lol?'#3a1026':(mky?'#20120a':(swm?'#073a52':(wlf?'#0a0b10':'#05050c'))))))))))))));
   ctx.fillStyle=sea?'#04223a':(mtl?'#120409':(skt?'#1a1814':(stp?'#0e2733':(flw?'#1b1020':
     (lng?'#e9e6e0':(kjy?'#07170c':(afr?'#2a1630':(crw?'#121318':(bld?'#0a1410':
     (pno?'#0b1026':(lol?'#3a1026':(mky?'#20120a':(swm?'#073a52':(wlf?'#0a0b10':'#05050c')))))))))))))); 
@@ -4212,15 +4221,7 @@ function drawIdol(){
     ctx.fillStyle='rgba(255,255,255,0.85)';
     bt('SKIP',kb.x+kb.w/2,kb.y+kb.h/2+5,2,'center',1);
   }
-  /* 投げ銭のおすすめ（ゆっくり流れる文字） */
-  if(idolT&&!heartT&&!fieldLive){
-    var msg='TIP をあげて RARE WATONER の出る確率を上げよう！   ';
-    var mw=btWidth(msg,1,2);
-    var off2=(now*0.035)%mw;
-    ctx.fillStyle='rgba(255,212,0,0.75)';
-    bt(msg,W-off2,by+52,1,'left',2);
-    bt(msg,W-off2+mw,by+52,1,'left',2);
-  }
+
   /* 投げ銭 */
   if(idolT&&!heartT&&!fieldLive){
     var tb=tipBtn();
@@ -4276,29 +4277,25 @@ function drawIdol(){
   drawBoy(bx,by,34,'n',!!heartT);
   /* 見出しと歌詞的な演出 */
   ctx.fillStyle='rgba(255,212,0,'+(0.25+0.75*lit)+')';
-  bt(soloId?('SOLO  '+soloLabel(soloId)):((team.length>=7)?'NEW WATONERS':('WATONER '+idolN)),
+  bt(soloId?soloLabel(soloId):((team.length>=7)?'NEW WATONERS':('WATONER '+idolN)),
      W/2,oy2-16,3,'center',2);
   if(soloId){                                 /* 曲のタイトル（書いたとおりの字で） */
     var ttl=soloSong(soloId);
     if(ttl){
       ctx.save();
-      ctx.font='700 15px "Hiragino Kaku Gothic ProN","Yu Gothic","Noto Sans JP",sans-serif';
+      ctx.font='700 17px "Hiragino Kaku Gothic ProN","Yu Gothic","Noto Sans JP",sans-serif';
       ctx.textAlign='center';ctx.textBaseline='alphabetic';
       var tw5=0;
       try{tw5=ctx.measureText(ttl).width;}catch(e){}
       if(tw5>W-2*PAD-8){                      // 長いときは少し縮める
-        ctx.font='700 12px "Hiragino Kaku Gothic ProN","Yu Gothic","Noto Sans JP",sans-serif';
+        ctx.font='700 13px "Hiragino Kaku Gothic ProN","Yu Gothic","Noto Sans JP",sans-serif';
       }
       ctx.fillStyle='rgba(0,0,0,0.55)';        // 読みやすいように影
-      ctx.fillText(ttl,W/2+1,oy2-37);
-      ctx.fillStyle='rgba(255,255,255,'+(0.35+0.6*lit)+')';
-      ctx.fillText(ttl,W/2,oy2-38);
+      ctx.fillText(ttl,W/2+1,oy2-45);
+      ctx.fillStyle='rgba(255,255,255,'+(0.40+0.6*lit)+')';
+      ctx.fillText(ttl,W/2,oy2-46);
       ctx.restore();
     }
-  }
-  if(idolDemo){                               /* 確認用：鳴っている曲 */
-    ctx.fillStyle='rgba(255,255,255,0.5)';
-    bt('SONG '+(songOn?songNow.toUpperCase():'SYNTH'),W/2,oy2-58,1,'center',2);
   }
   if(!idolT){
     ctx.fillStyle='rgba(255,255,255,'+(0.25+0.5*lit)+')';
@@ -4309,9 +4306,36 @@ function drawIdol(){
   else if(!heartT){
     ctx.fillStyle='rgba(255,255,255,0.75)';
     bt(soloId?'SOLO DEBUT!':(idolDemo?'IDOL DEBUT!  TAP TO EXIT':'IDOL DEBUT!'),W/2,oy2+S+70,2,'center',2);
-    var note=Math.floor(now/300)%4;
-    ctx.fillStyle='rgba(255,255,255,'+(0.35+0.3*Math.abs(beat))+')';
-    bt(['*','~','*','~'][note]+' LA LA LA '+['~','*','~','*'][note],W/2,oy2+S+92,1,'center',2);
+    var lyr=soloId?soloLyrics(soloId):'';
+    if(lyr){                                 /* 歌詞が左から出てきて右へ消える */
+      var lbY=oy2+S+80,lbH=26,cy5=lbY+lbH/2;
+      ctx.save();
+      ctx.beginPath();ctx.rect(0,lbY,W,lbH);ctx.clip();
+      ctx.font='700 16px "Hiragino Kaku Gothic ProN","Yu Gothic","Noto Sans JP",sans-serif';
+      ctx.textAlign='left';ctx.textBaseline='middle';
+      var lw5=0;
+      try{lw5=ctx.measureText(lyr).width;}catch(e){lw5=lyr.length*16;}
+      var span5=W+lw5+60;                    // 左の外から右の外まで
+      var off5=((now-idolT)*0.052)%span5;
+      var lx5=-lw5+off5;                     // はじめは画面の左の外
+      ctx.fillStyle='rgba(0,0,0,0.60)';
+      ctx.fillText(lyr,lx5+1.5,cy5+1.5);
+      ctx.fillStyle='rgba(255,240,170,0.95)';
+      ctx.fillText(lyr,lx5,cy5);
+      try{                                   /* 両端をふわっと消す */
+        var fg5=ctx.createLinearGradient(0,0,W,0);
+        fg5.addColorStop(0,padCol);
+        fg5.addColorStop(0.08,'rgba(0,0,0,0)');
+        fg5.addColorStop(0.92,'rgba(0,0,0,0)');
+        fg5.addColorStop(1,padCol);
+        ctx.fillStyle=fg5;ctx.fillRect(0,lbY,W,lbH);
+      }catch(e){}
+      ctx.restore();
+    }else{
+      var note=Math.floor(now/300)%4;
+      ctx.fillStyle='rgba(255,255,255,'+(0.35+0.3*Math.abs(beat))+')';
+      bt(['*','~','*','~'][note]+' LA LA LA '+['~','*','~','*'][note],W/2,oy2+S+92,1,'center',2);
+    }
   }else{
     /* ハートが飛んでくる */
     var t=Math.min(1,(now-heartT)/HEART_MS);
