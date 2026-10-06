@@ -393,7 +393,8 @@ var RARE=[
  {id:'lolita',ja:'ロリータ',    en:'LOLITA',    dress:'#f06fa8', hair:1,  frill:1},
  {id:'metal', ja:'メタル',      en:'HEAVY METAL',dress:'#141418',hair:2,  metal:1},
  {id:'mermaid',ja:'人魚',       en:'MERMAID',   dress:'#2fd0c0', hair:-1, mermaid:1},
- {id:'monkey',ja:'おさるを抱っこ',en:'MONKEY',  dress:'#ffffff', hair:0,  monkey:1}
+ {id:'monkey',ja:'おさるを抱っこ',en:'MONKEY',  dress:'#ffffff', hair:9,  monkey:1,
+  hairCol:'#2b1a0e', chem:1}
 ];
 function rareById(id){for(var i=0;i<RARE.length;i++)if(RARE[i].id===id)return RARE[i];return null;}
 var rareOv=null,detailOv=false,micOv=0;  // 描画中のレア設定／細密描画／マイク（歌う姿）
@@ -2754,6 +2755,205 @@ function drawCurtainBack(ox2,oy2,S,lit){       /* 白い幕と、隙間から見
   }
   ctx.restore();
 }
+function drawJamaicaBack(ox2,oy2,S,lit){       /* ジャマイカの夕方 */
+  ctx.save();
+  ctx.beginPath();ctx.rect(ox2,oy2,S,S*0.88);ctx.clip();
+  /* 低い雲 */
+  for(var cl=0;cl<5;cl++){
+    var cy8=oy2+S*(0.10+cl*0.065);
+    var cx8=ox2+S*(((cl*43)%100)/100)+Math.sin(now*0.00008+cl)*S*0.03;
+    ctx.fillStyle='rgba(255,'+(190-cl*12)+','+(150-cl*16)+',0.26)';
+    ctx.beginPath();
+    ctx.ellipse?ctx.ellipse(cx8,cy8,S*(0.20+0.06*(cl%3)),S*0.022,0,0,7)
+               :ctx.arc(cx8,cy8,S*0.16,0,7);
+    ctx.fill();
+  }
+  /* 沈みかけた太陽 */
+  var sux=ox2+S*0.66,suy=oy2+S*0.555,sur=S*0.085;
+  var sgl=ctx.createRadialGradient(sux,suy,sur*0.3,sux,suy,sur*3.4);
+  sgl.addColorStop(0,'rgba(255,236,160,0.75)');
+  sgl.addColorStop(0.35,'rgba(255,170,80,0.26)');
+  sgl.addColorStop(1,'rgba(255,140,60,0)');
+  ctx.fillStyle=sgl;
+  ctx.beginPath();ctx.arc(sux,suy,sur*3.4,0,7);ctx.fill();
+  ctx.fillStyle='#fff3c0';
+  ctx.beginPath();ctx.arc(sux,suy,sur,0,7);ctx.fill();
+  /* 海（水平線のきらめき） */
+  ctx.fillStyle='#2f6f84';
+  ctx.fillRect(ox2,oy2+S*0.575,S,S*0.115);
+  var wgl=ctx.createLinearGradient(0,oy2+S*0.575,0,oy2+S*0.69);
+  wgl.addColorStop(0,'rgba(255,210,130,0.45)');
+  wgl.addColorStop(1,'rgba(255,170,90,0.10)');
+  ctx.fillStyle=wgl;
+  ctx.fillRect(ox2,oy2+S*0.575,S,S*0.115);
+  ctx.strokeStyle='rgba(255,240,190,0.38)';
+  ctx.lineWidth=Math.max(1,S*0.004);
+  for(var wv=0;wv<7;wv++){
+    var wy8=oy2+S*(0.59+wv*0.014);
+    var wo=Math.sin(now*0.0007+wv*1.4)*S*0.05;
+    ctx.beginPath();
+    ctx.moveTo(sux-S*0.07+wo,wy8);ctx.lineTo(sux+S*0.07+wo,wy8);
+    ctx.stroke();
+  }
+  /* 遠くの丘 */
+  ctx.fillStyle='#3d5c46';
+  ctx.beginPath();
+  ctx.moveTo(ox2,oy2+S*0.60);
+  ctx.quadraticCurveTo(ox2+S*0.16,oy2+S*0.49,ox2+S*0.34,oy2+S*0.585);
+  ctx.quadraticCurveTo(ox2+S*0.46,oy2+S*0.63,ox2+S*0.60,oy2+S*0.575);
+  ctx.quadraticCurveTo(ox2+S*0.82,oy2+S*0.50,ox2+S,oy2+S*0.60);
+  ctx.lineTo(ox2+S,oy2+S*0.70);ctx.lineTo(ox2,oy2+S*0.70);
+  ctx.closePath();ctx.fill();
+  /* 丘のふもとの小屋とトタン屋根 */
+  var HS=[[0.10,0.655,0.072,'#c8613f'],[0.22,0.668,0.058,'#cfa24a'],
+          [0.44,0.672,0.064,'#4e7fa0'],[0.74,0.662,0.070,'#c8613f'],
+          [0.88,0.672,0.055,'#6a9a56']];
+  for(var hs8=0;hs8<HS.length;hs8++){
+    var hx8=ox2+S*HS[hs8][0],hy8=oy2+S*HS[hs8][1],hw8=S*HS[hs8][2];
+    ctx.fillStyle=HS[hs8][3];
+    ctx.fillRect(hx8-hw8/2,hy8,hw8,hw8*0.62);
+    ctx.fillStyle='#8a8f96';                   // トタンの屋根
+    ctx.beginPath();
+    ctx.moveTo(hx8-hw8*0.64,hy8);
+    ctx.lineTo(hx8,hy8-hw8*0.34);
+    ctx.lineTo(hx8+hw8*0.64,hy8);
+    ctx.closePath();ctx.fill();
+    ctx.fillStyle='rgba(255,230,150,'+(0.70*lit)+')';   // 灯のついた窓
+    ctx.fillRect(hx8-hw8*0.14,hy8+hw8*0.14,hw8*0.28,hw8*0.22);
+  }
+  /* 小さく立ちのぼる煙 */
+  var SM=[0.18,0.50,0.80];
+  for(var sm=0;sm<SM.length;sm++){
+    var smx=ox2+S*SM[sm],smy=oy2+S*0.645;
+    for(var pu=0;pu<7;pu++){
+      var t8=((now*0.00022+pu*0.142+sm*0.37)%1);
+      var py8=smy-t8*S*0.185;
+      var px8=smx+Math.sin(t8*5.4+sm*2)*S*0.022*t8;
+      var pr8=S*(0.006+t8*0.019);
+      ctx.fillStyle='rgba(226,222,214,'+(0.34*(1-t8)*(1-t8))+')';
+      ctx.beginPath();ctx.arc(px8,py8,pr8,0,7);ctx.fill();
+    }
+  }
+  /* ヤシの木 */
+  function palm(px,py,ph,fl){
+    ctx.strokeStyle='#2d2318';
+    ctx.lineWidth=Math.max(1.6,ph*0.055);
+    ctx.lineCap='round';
+    ctx.beginPath();
+    ctx.moveTo(px,py);
+    ctx.quadraticCurveTo(px+fl*ph*0.14,py-ph*0.55,px+fl*ph*0.20,py-ph);
+    ctx.stroke();
+    var tipx=px+fl*ph*0.20,tipy=py-ph;
+    for(var lf=0;lf<7;lf++){
+      var la=-Math.PI*0.5+(lf-3)*0.46+Math.sin(now*0.0006+lf)*0.045;
+      ctx.strokeStyle='#23482c';
+      ctx.lineWidth=Math.max(1.4,ph*0.045);
+      ctx.beginPath();
+      ctx.moveTo(tipx,tipy);
+      ctx.quadraticCurveTo(tipx+Math.cos(la)*ph*0.28,tipy+Math.sin(la)*ph*0.28,
+                           tipx+Math.cos(la)*ph*0.44,tipy+Math.sin(la)*ph*0.44+ph*0.13);
+      ctx.stroke();
+    }
+  }
+  palm(ox2+S*0.075,oy2+S*0.70,S*0.30,-1);
+  palm(ox2+S*0.315,oy2+S*0.715,S*0.21,1);
+  palm(ox2+S*0.635,oy2+S*0.705,S*0.24,-1);
+  palm(ox2+S*0.945,oy2+S*0.695,S*0.33,1);
+  ctx.restore();
+}
+function drawBunting(ox2,oy2,S,lit){           /* 弓なりに3回たわむ三角旗 */
+  var FC=['#ffd400','#17171c','#f4f1ea','#1d8a3f'];   // 黄・黒・白・緑
+  var y0=oy2+S*0.055,sag=S*0.085;
+  var sway=Math.sin(now*0.00055)*S*0.008;
+  function yAt(t){                             // 3つの弧をつなぐたわみ
+    var u=t*3,seg=Math.min(2,Math.floor(u)),fr=u-seg;
+    return y0+Math.sin(Math.PI*fr)*sag+sway*Math.sin(Math.PI*u);
+  }
+  ctx.save();
+  ctx.beginPath();ctx.rect(ox2,oy2,S,S*0.50);ctx.clip();
+  ctx.strokeStyle='rgba(42,34,24,0.85)';       // 紐
+  ctx.lineWidth=Math.max(1.3,S*0.0055);
+  ctx.beginPath();
+  for(var q=0;q<=90;q++){
+    var qx=ox2+S*(q/90),qy=yAt(q/90);
+    if(q===0)ctx.moveTo(qx,qy);else ctx.lineTo(qx,qy);
+  }
+  ctx.stroke();
+  var N=33,fw=S*0.030,fh=S*0.058;              // 三角の旗
+  for(var i=0;i<N;i++){
+    var t=(i+0.5)/N;
+    var fx=ox2+S*t,fy=yAt(t);
+    var sl=(yAt(Math.min(1,t+0.012))-yAt(Math.max(0,t-0.012)));
+    var ang=Math.atan2(sl,S*0.024);
+    ctx.save();
+    ctx.translate(fx,fy);
+    ctx.rotate(ang);
+    ctx.fillStyle=FC[i%4];
+    ctx.beginPath();
+    ctx.moveTo(-fw/2,0);ctx.lineTo(fw/2,0);ctx.lineTo(0,fh);
+    ctx.closePath();ctx.fill();
+    ctx.fillStyle='rgba(0,0,0,0.16)';          // 陰
+    ctx.beginPath();
+    ctx.moveTo(0,0);ctx.lineTo(fw/2,0);ctx.lineTo(0,fh);
+    ctx.closePath();ctx.fill();
+    ctx.restore();
+  }
+  ctx.restore();
+}
+function drawConga(cx,cy,cw,v){                /* パーカッション（コンガ） */
+  var ch=cw*1.85,rw=cw*0.52,bw=cw*0.36;        // 上の口／下の細り
+  var tilt=Math.sin(now*0.0012+v*1.7)*0.012;
+  ctx.save();
+  ctx.translate(cx,cy);
+  ctx.rotate(tilt);
+  ctx.fillStyle='rgba(0,0,0,0.38)';            // 影
+  ctx.beginPath();
+  ctx.ellipse?ctx.ellipse(0,0,rw*0.95,cw*0.13,0,0,7):ctx.arc(0,0,rw*0.8,0,7);
+  ctx.fill();
+  var BC=['#8e4a22','#a65c28','#7b3d1c'][v%3];
+  var bg=ctx.createLinearGradient(-rw,0,rw,0);
+  bg.addColorStop(0,'rgba(0,0,0,0.42)');
+  bg.addColorStop(0.42,BC);
+  bg.addColorStop(0.72,BC);
+  bg.addColorStop(1,'rgba(0,0,0,0.34)');
+  ctx.fillStyle=BC;
+  ctx.beginPath();                             // 胴（上が太く下が細い）
+  ctx.moveTo(-rw,-ch);
+  ctx.quadraticCurveTo(-rw*1.10,-ch*0.52,-bw,0);
+  ctx.lineTo(bw,0);
+  ctx.quadraticCurveTo(rw*1.10,-ch*0.52,rw,-ch);
+  ctx.closePath();ctx.fill();
+  ctx.fillStyle=bg;ctx.fill();                 // 丸みの陰影
+  for(var bn=0;bn<2;bn++){                     // 胴に巻いた帯
+    ctx.fillStyle=(bn?'#1d8a3f':'#ffd400');
+    var byy=-ch*(0.42+bn*0.17);
+    var bww=rw*(0.98-bn*0.10);
+    ctx.fillRect(-bww,byy,bww*2,ch*0.045);
+  }
+  ctx.fillStyle='#e8d8bd';                     // 皮
+  ctx.beginPath();
+  ctx.ellipse?ctx.ellipse(0,-ch,rw,rw*0.34,0,0,7):ctx.arc(0,-ch,rw*0.9,0,7);
+  ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,0.35)';
+  ctx.beginPath();
+  ctx.ellipse?ctx.ellipse(-rw*0.26,-ch-rw*0.07,rw*0.30,rw*0.11,0,0,7)
+             :ctx.arc(-rw*0.26,-ch,rw*0.25,0,7);
+  ctx.fill();
+  ctx.strokeStyle='#c9ccd4';                   // 締め具のリング
+  ctx.lineWidth=Math.max(1.2,cw*0.030);
+  ctx.beginPath();
+  ctx.ellipse?ctx.ellipse(0,-ch+rw*0.05,rw*1.03,rw*0.35,0,0,7):ctx.arc(0,-ch,rw,0,7);
+  ctx.stroke();
+  ctx.strokeStyle='rgba(190,196,206,0.8)';     // 縦のテンションロッド
+  ctx.lineWidth=Math.max(1,cw*0.020);
+  for(var rd=-1;rd<=1;rd++){
+    ctx.beginPath();
+    ctx.moveTo(rd*rw*0.80,-ch+rw*0.12);
+    ctx.lineTo(rd*rw*0.80,-ch+ch*0.22);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
 function drawJungleBack(ox2,oy2,S,lit){        /* ジャングルの森 */
   ctx.save();
   ctx.beginPath();ctx.rect(ox2,oy2,S,S*0.88);ctx.clip();
@@ -3127,9 +3327,10 @@ function drawIdol(){
   var dts=(soloId==='dots');                   // 水玉は雪と街灯
   var pno=(soloId==='afro2');                  // 横縞お団子は白いピアノ
   var lol=(soloId==='lolita');                 // ロリータはフリルとソファ
+  var mky=(soloId==='monkey');                 // おさるを抱っこはジャマイカの夕方
   ctx.fillStyle=sea?'#04223a':(mtl?'#120409':(skt?'#1a1814':(stp?'#0e2733':(flw?'#1b1020':
     (lng?'#e9e6e0':(kjy?'#07170c':(afr?'#2a1630':(crw?'#121318':(bld?'#0a1410':
-    (pno?'#0b1026':(lol?'#3a1026':'#05050c'))))))))))); 
+    (pno?'#0b1026':(lol?'#3a1026':(mky?'#20120a':'#05050c'))))))))))));
   ctx.fillRect(0,0,W,H);
   /* 舞台の正方形 */
   if(sea){
@@ -3150,6 +3351,14 @@ function drawIdol(){
     qg.addColorStop(0.6,'#1a2550');
     qg.addColorStop(1,'#101838');
     ctx.fillStyle=qg;
+  }else if(mky){
+    var yg=ctx.createLinearGradient(0,oy2,0,oy2+S);
+    yg.addColorStop(0,'#2a3f7a');               // 暮れかけた空
+    yg.addColorStop(0.32,'#8b5a93');
+    yg.addColorStop(0.55,'#e0834e');
+    yg.addColorStop(0.72,'#f6bf62');
+    yg.addColorStop(1,'#f8d98e');
+    ctx.fillStyle=yg;
   }else if(dts){
     var dg=ctx.createLinearGradient(0,oy2,0,oy2+S);
     dg.addColorStop(0,'#0d1626');               // 冬の夜
@@ -3269,6 +3478,7 @@ function drawIdol(){
       ctx.closePath();ctx.fill();
     }
   }
+  if(mky) drawJamaicaBack(ox2,oy2,S,lit);
   if(lol) drawFrillBack(ox2,oy2,S,lit);
   if(pno) drawNavyCurtain(ox2,oy2,S,lit);
   if(dts) drawSnowBack(ox2,oy2,S,lit);
@@ -3282,7 +3492,7 @@ function drawIdol(){
   if(flw) drawCityBack(ox2,oy2,S,lit);
   if(skt) drawGraffiti(ox2,oy2,S,lit);
   /* 舞台の床 */
-  ctx.fillStyle=sea?'#b9ac82':(mtl?'#1a1216':(skt?'#6f6855':(crw?'#6b4a2e':(bld?'#2c4a28':(dts?'#1b2740':(pno?'#2a2036':(lol?'#8c3a5e':'#2a1636')))))));  // 砂浜（夜の色）
+  ctx.fillStyle=sea?'#b9ac82':(mtl?'#1a1216':(skt?'#6f6855':(crw?'#6b4a2e':(bld?'#2c4a28':(dts?'#1b2740':(pno?'#2a2036':(lol?'#8c3a5e':(mky?'#4a3524':'#2a1636'))))))));  // 砂浜（夜の色）
   ctx.fillRect(ox2,oy2+S*0.86,S,S*0.14);
   ctx.fillStyle=sea?'rgba(255,255,255,0.35)':'rgba(255,255,255,0.08)';
   ctx.fillRect(ox2,oy2+S*0.86,S,2);
@@ -3364,6 +3574,12 @@ function drawIdol(){
   if(lng){                                      // 左右の大きなケーキ
     drawCake(ox2+S*0.16,oy2+S*0.885,S*0.26);
     drawCake(ox2+S*0.84,oy2+S*0.885,S*0.26);
+  }
+  if(mky){                                      // パーカッション 左に1、右に2
+    drawConga(ox2+S*0.145,oy2+S*0.905,S*0.175,0);
+    drawConga(ox2+S*0.805,oy2+S*0.905,S*0.185,1);
+    drawConga(ox2+S*0.925,oy2+S*0.900,S*0.155,2);
+    drawBunting(ox2,oy2,S,lit);                 // 三角の旗の連なり
   }
   /* 舞台全体を少し暗く */
   ctx.fillStyle='rgba(0,0,0,'+(sea?0.30:(crw?0.44:0.22))+')';
@@ -3557,7 +3773,32 @@ function drawIdol(){
     }
     ctx.globalAlpha=1;
   }
-  var lasN=(idolT&&!skt&&!afr&&!kjy&&!crw&&!bld&&!dts&&!pno)?(sea?2:(wch?4:6)):0;
+  if(mky&&idolT){                               /* 太めの赤いスポット3本が床を照らす */
+    for(i=0;i<3;i++){
+      var rx6=ox2+S*(0.26+i*0.24);
+      var fx6=ox2+S*(0.24+i*0.26)+Math.sin(now*0.00055+i*2.1)*S*0.045;
+      var rg6=ctx.createLinearGradient(rx6,oy2+S*0.06,fx6,oy2+S*0.92);
+      rg6.addColorStop(0,'rgba(255,60,60,'+(0.10*lit)+')');
+      rg6.addColorStop(0.55,'rgba(255,45,55,'+(0.22*lit)+')');
+      rg6.addColorStop(1,'rgba(255,70,70,'+(0.40*lit)+')');
+      ctx.fillStyle=rg6;
+      ctx.beginPath();                          // 太い光の柱
+      ctx.moveTo(rx6-S*0.055,oy2+S*0.06);
+      ctx.lineTo(rx6+S*0.055,oy2+S*0.06);
+      ctx.lineTo(fx6+S*0.135,oy2+S*0.92);
+      ctx.lineTo(fx6-S*0.135,oy2+S*0.92);
+      ctx.closePath();ctx.fill();
+      var pg6=ctx.createRadialGradient(fx6,oy2+S*0.915,S*0.02,fx6,oy2+S*0.915,S*0.17);
+      pg6.addColorStop(0,'rgba(255,90,80,'+(0.50*lit)+')');   // 床に落ちた光の円
+      pg6.addColorStop(1,'rgba(255,50,50,0)');
+      ctx.fillStyle=pg6;
+      ctx.beginPath();
+      ctx.ellipse?ctx.ellipse(fx6,oy2+S*0.915,S*0.17,S*0.045,0,0,7)
+                 :ctx.arc(fx6,oy2+S*0.915,S*0.15,0,7);
+      ctx.fill();
+    }
+  }
+  var lasN=(idolT&&!skt&&!afr&&!kjy&&!crw&&!bld&&!dts&&!pno&&!mky)?(sea?2:(wch?4:6)):0;
   var lasSpd=sea?0.000275:(stp?0.000275:(flw?0.00037:(wch?0.00030:0.0011)));
   var lasW=flw?2:1;                            // 花柄は太く
   for(i=0;i<lasN;i++){
@@ -5632,7 +5873,7 @@ function drawGirlBody(x,y,h,scale,face,cheer){
     ctx.fillStyle=SK;
     ctx.fillRect(x-w*0.30,y-h*0.20,w*0.60,h*0.14);
   }else{
-  if(!(R&&R.track)&&!(R&&R.jeans)&&!(R&&R.sweat)){
+  if(!(R&&R.track)&&!(R&&R.jeans)&&!(R&&R.sweat)&&!(R&&R.chem)){
     var hemY=(R&&R.knee)?(y+h*0.24):(y+h*0.40);
     var hemW=(R&&R.knee)?(side?0.40:0.54):(side?0.48:0.66);
     if(R&&R.redTee){                             // 中の赤いTシャツ
@@ -5747,21 +5988,54 @@ function drawGirlBody(x,y,h,scale,face,cheer){
       ctx.fillRect(x-cw3*0.34,y-h*0.06+ch3*0.38,cw3*0.68,Math.max(1,ch3*0.18));
     }
   }
-  if(R&&R.monkey){                               /* 赤と黄の横縞＋青の半ズボン */
-    ctx.save();
+  if(R&&R.monkey){                               /* 赤と黄の横縞＋ケミカルウォッシュ */
+    ctx.save();                                  // 上は横縞のトップス
     ctx.beginPath();
-    ctx.moveTo(x-w*(side?0.48:0.66),y+h*0.40);
-    ctx.lineTo(x-w*(side?0.22:0.30),y-h*0.20);
-    ctx.lineTo(x+w*(side?0.22:0.30),y-h*0.20);
-    ctx.lineTo(x+w*(side?0.48:0.66),y+h*0.40);
+    ctx.moveTo(x-w*(side?0.27:0.35),y-h*0.22);
+    ctx.lineTo(x+w*(side?0.27:0.35),y-h*0.22);
+    ctx.lineTo(x+w*(side?0.31:0.41),y+h*0.09);
+    ctx.lineTo(x-w*(side?0.31:0.41),y+h*0.09);
     ctx.closePath();ctx.clip();
-    for(var mk2=0;mk2<5;mk2++){
+    for(var mk2=0;mk2<6;mk2++){
       ctx.fillStyle=(mk2%2)?'#ffd400':'#e0243a';
-      ctx.fillRect(x-w*0.7,y-h*0.20+mk2*h*0.07,w*1.4,h*0.07);
+      ctx.fillRect(x-w*0.7,y-h*0.22+mk2*h*0.055,w*1.4,h*0.055);
     }
-    ctx.fillStyle='#2b6fd6';
-    ctx.fillRect(x-w*0.7,y+h*0.15,w*1.4,h*0.25);
     ctx.restore();
+    /* ケミカルウォッシュのジーンズ（2本の脚） */
+    var jx1=x-w*(side?0.28:0.36),jx2=x+w*(side?0.02:0.03);
+    var jw=w*(side?0.26:0.33),jy=y+h*0.07,jh=h*0.325;
+    ctx.fillStyle='#8fb4d8';                     // 色の抜けた淡い青
+    ctx.fillRect(jx1,jy,jw,jh);
+    ctx.fillRect(jx2,jy,jw,jh);
+    ctx.save();                                  // ムラ（白く抜けた斑）
+    ctx.beginPath();
+    ctx.rect(jx1,jy,jw,jh);ctx.rect(jx2,jy,jw,jh);
+    ctx.clip();
+    for(var cw=0;cw<22;cw++){
+      var cq=(cw*61)%100,cr=(cw*37)%100,cs=(cw*53)%100;
+      ctx.fillStyle=(cw%3)?'rgba(226,240,250,0.55)':'rgba(72,104,142,0.40)';
+      ctx.beginPath();
+      ctx.ellipse?ctx.ellipse(x-w*0.38+w*0.76*(cq/100),jy+jh*(cr/100),
+                              w*(0.045+0.030*(cs/100)),jh*(0.045+0.035*(cq/100)),
+                              cs*0.06,0,7)
+                 :ctx.arc(x-w*0.38+w*0.76*(cq/100),jy+jh*(cr/100),w*0.05,0,7);
+      ctx.fill();
+    }
+    ctx.restore();
+    ctx.fillStyle='#6d93b8';                     // 腰のベルト部分
+    ctx.fillRect(x-w*(side?0.30:0.38),jy,w*(side?0.60:0.76),h*0.035);
+    ctx.strokeStyle='rgba(255,236,170,0.55)';    // 黄色いステッチ
+    ctx.lineWidth=Math.max(0.8,h*0.005);
+    ctx.beginPath();
+    ctx.moveTo(jx1+jw*0.5,jy+h*0.05);ctx.lineTo(jx1+jw*0.5,jy+jh);
+    ctx.moveTo(jx2+jw*0.5,jy+h*0.05);ctx.lineTo(jx2+jw*0.5,jy+jh);
+    ctx.stroke();
+    ctx.fillStyle='#1d1d22';                     // 靴
+    ctx.fillRect(jx1-w*0.03,jy+jh,jw*1.12,h*0.048);
+    ctx.fillRect(jx2-w*0.03,jy+jh,jw*1.12,h*0.048);
+    ctx.fillStyle=SK;                            // 肩を出す
+    ctx.fillRect(x-w*(side?0.27:0.35),y-h*0.22,w*0.09,h*0.08);
+    ctx.fillRect(x+w*(side?0.18:0.26),y-h*0.22,w*0.09,h*0.08);
     /* だっこした猿 */
     var mx=x+w*0.30,my=y+h*0.06;
     ctx.fillStyle='#8a6a4a';
@@ -6091,6 +6365,14 @@ function drawGirlBody(x,y,h,scale,face,cheer){
       ctx.beginPath();ctx.arc(x,hy-hr*1.42,hr*0.56,0,7);ctx.fill();
       ctx.fillRect(x-hr*0.36,hy-hr*1.04,hr*0.72,hr*0.22);
     }else if(hairOv===4){                 /* ショートカット（横は短く） */
+    }else if(hairOv===9){                 /* ドレッドヘア（横向き） */
+      for(var dl=0;dl<7;dl++){
+        var dq=(dl-3)/3;
+        var dx6=x-f*hr*(0.30+0.70*Math.abs(dq))+dq*hr*0.30;
+        var dlen=hr*(1.5+0.9*(1-Math.abs(dq)))+hr*0.5*((dl*31)%10)/10;
+        ctx.fillRect(dx6-hr*0.15,hy-hr*0.30,hr*0.30,dlen);
+        ctx.beginPath();ctx.arc(dx6,hy-hr*0.30+dlen,hr*0.15,0,7);ctx.fill();
+      }
     }else if(hairOv===2){                 /* ロング */
       ctx.fillRect(x-f*hr*0.95-hr*0.38,hy-hr*0.2,hr*0.76,hr*3.3);
     }
@@ -6123,6 +6405,38 @@ function drawGirlBody(x,y,h,scale,face,cheer){
     }else if(hairOv===7){                 /* ベリーショート */
       ctx.fillRect(x-hr*1.04,hy-hr*0.42,hr*0.26,hr*0.42);
       ctx.fillRect(x+hr*0.78,hy-hr*0.42,hr*0.26,hr*0.42);
+    }else if(hairOv===9){                 /* ドレッドヘア：顔の両脇に太い束 */
+      ctx.beginPath();                    // 頭頂を覆う（顔にはかからない）
+      ctx.arc(x,hy-hr*0.30,hr*1.14,Math.PI*1.02,Math.PI*1.98);ctx.fill();
+      for(var dk=0;dk<5;dk++){            // 頭の後ろから上に出る短い束
+        var ka=Math.PI*(1.10+dk*0.20);
+        ctx.beginPath();
+        ctx.arc(x+Math.cos(ka)*hr*1.00,hy-hr*0.30+Math.sin(ka)*hr*1.00,hr*0.24,0,7);
+        ctx.fill();
+      }
+      for(var dr=0;dr<8;dr++){            // 左右4本ずつ、肩まで垂れる
+        var dsg=(dr<4)?-1:1;
+        var dj=(dr<4)?dr:(7-dr);          // 0:外 〜 3:内
+        var dx7=x+dsg*hr*(1.18-dj*0.133);   // いちばん内側でも目にかからない
+        var dtop=hy-hr*(0.52-dj*0.12);
+        var dsw=dsg*hr*(0.07+0.05*((dr*23)%10)/10);
+        var dh7=hr*(2.10-dj*0.22)+hr*0.34*(((dr*29)%10)/10);
+        ctx.beginPath();                  // 束（ゆるく外に流れる）
+        ctx.moveTo(dx7-hr*0.16,dtop);
+        ctx.quadraticCurveTo(dx7-hr*0.16+dsw,dtop+dh7*0.60,
+                             dx7-hr*0.14+dsw*1.7,dtop+dh7);
+        ctx.lineTo(dx7+hr*0.14+dsw*1.7,dtop+dh7);
+        ctx.quadraticCurveTo(dx7+hr*0.16+dsw,dtop+dh7*0.60,dx7+hr*0.16,dtop);
+        ctx.closePath();ctx.fill();
+        ctx.beginPath();                  // 先の丸み
+        ctx.arc(dx7+dsw*1.7,dtop+dh7,hr*0.14,0,7);ctx.fill();
+        if(dj<3){                         // 束に通したビーズ
+          ctx.fillStyle=['#ffd400','#1d7a3a','#e0243a'][dj];
+          ctx.beginPath();
+          ctx.arc(dx7+dsw*1.2,dtop+dh7*0.70,hr*0.15,0,7);ctx.fill();
+          ctx.fillStyle=HC;
+        }
+      }
     }else if(hairOv===4){                 /* ショートカット */
       ctx.fillRect(x-hr*1.14,hy-hr*0.45,hr*0.40,hr*0.75);
       ctx.fillRect(x+hr*0.74,hy-hr*0.45,hr*0.40,hr*0.75);
