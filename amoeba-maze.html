@@ -589,7 +589,7 @@ var NOTE={A2:110.0,B2:123.5,C3:130.8,D3:146.8,E3:164.8,F3:174.6,G3:196.0,
           A5:880.0,B5:987.8,C6:1046.5,D6:1174.7,E6:1318.5,G6:1568.0};
 function musicStop(){
   stopSoloSong();
-  musicOn=false;
+  musicOn=false;songT0=0;
   if(!musicGain)return;
   try{
     musicGain.gain.cancelScheduledValues(ac.currentTime);
@@ -762,6 +762,7 @@ function failSfx(){
    起動直後の一度きりで許可を取り、ライブではsrcを差し替えて鳴らす。 */
 var SONG_EMB={};                 // 曲は別ファイル（solo-*.mp3）から読む
 var songBuf={},songSrc=null,songGain=null,songOn=false,songLen=0,songInited=false;
+var songT0=0;                                // 曲が鳴り始めた時刻（歌詞の基準）
 var songPend={},songNow='',songExt={};       // 必要になった曲だけ読み込む（iPhoneの記憶容量対策）
 /* 歌はWeb Audioで鳴らす。<audio>はiPhoneのサイレントスイッチで無音になるため。 */
 function b64ToBuf(b64){
@@ -862,6 +863,7 @@ function soloMusic(id){
     songSrc=ac.createBufferSource();songSrc.buffer=songBuf[key];
     songSrc.connect(songGain);
     songSrc.start(0);
+    songT0=now;                                // ここから歌が始まる
     songLen=songBuf[key].duration*1000;
     songOn=true;
     musicOn=true;                            // 他の曲が重ならないように
@@ -4352,7 +4354,7 @@ function drawIdol(){
     ctx.fillStyle='rgba(255,255,255,0.75)';
     bt(soloId?'SOLO DEBUT!':(idolDemo?'IDOL DEBUT!  TAP TO EXIT':'IDOL DEBUT!'),W/2,oy2+S+70,2,'center',2);
     var lyr=soloId?soloLyrics(soloId):'';
-    if(lyr){                                 /* 歌詞が左から出てきて右へ消える */
+    if(lyr){                                 /* 歌詞が右から入って左へ抜ける */
       var lbY=oy2+S+80,lbH=26,cy5=lbY+lbH/2;
       ctx.save();
       ctx.beginPath();ctx.rect(0,lbY,W,lbH);ctx.clip();
@@ -4360,13 +4362,15 @@ function drawIdol(){
       ctx.textAlign='left';ctx.textBaseline='middle';
       var lw5=0;
       try{lw5=ctx.measureText(lyr).width;}catch(e){lw5=lyr.length*16;}
-      var span5=W+lw5+60;                    // 左の外から右の外まで
-      var dur5=idolLen();                    // 曲と一緒に流れ終わるように
-      var spd5=dur5?(span5/dur5):0.052;
-      if(spd5<0.030)spd5=0.030;              // 遅すぎ・速すぎを防ぐ
-      if(spd5>0.090)spd5=0.090;
-      var off5=((now-idolT)*spd5)%span5;
-      var lx5=-lw5+off5;                     // はじめは画面の左の外
+      var RL=rareById(soloId)||{};
+      var t05=songT0||idolT;                 // 歌が鳴り出した時刻をゼロ点にする
+      var lead5=(RL.lyricLead||0)*1000;      // 歌い出しまでの間
+      var tail5=(RL.lyricTail||0)*1000;      // 終わりの余白
+      var dur5=(songOn&&songLen)?songLen:idolLen();
+      var end5=Math.max(lead5+3000,dur5-tail5);
+      var spd5=(W+lw5)/(end5-lead5);         // 歌い出しで右から入り、終わりで左へ抜ける
+      if(spd5>0.12)spd5=0.12;                // 速すぎは防ぐ
+      var lx5=W-spd5*((now-t05)-lead5);      // 右から入って左へ
       ctx.fillStyle='rgba(0,0,0,0.60)';
       ctx.fillText(lyr,lx5+1.5,cy5+1.5);
       ctx.fillStyle='rgba(255,240,170,0.95)';
