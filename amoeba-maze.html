@@ -394,7 +394,7 @@ var RARE=[
  {id:'metal', ja:'メタル',      en:'HEAVY METAL',dress:'#141418',hair:2,  metal:1},
  {id:'mermaid',ja:'人魚',       en:'MERMAID',   dress:'#2fd0c0', hair:-1, mermaid:1},
  {id:'monkey',ja:'おさるを抱っこ',en:'MONKEY',  dress:'#ffffff', hair:9,  monkey:1,
-  hairCol:'#2b1a0e', chem:1}
+  hairCol:'#2b1a0e', chem:1, bandana:1, skin:'#a9784c', noPalm:1}
 ];
 function rareById(id){for(var i=0;i<RARE.length;i++)if(RARE[i].id===id)return RARE[i];return null;}
 var rareOv=null,detailOv=false,micOv=0;  // 描画中のレア設定／細密描画／マイク（歌う姿）
@@ -2768,16 +2768,7 @@ function drawJamaicaBack(ox2,oy2,S,lit){       /* ジャマイカの夕方 */
                :ctx.arc(cx8,cy8,S*0.16,0,7);
     ctx.fill();
   }
-  /* 沈みかけた太陽 */
-  var sux=ox2+S*0.66,suy=oy2+S*0.555,sur=S*0.085;
-  var sgl=ctx.createRadialGradient(sux,suy,sur*0.3,sux,suy,sur*3.4);
-  sgl.addColorStop(0,'rgba(255,236,160,0.75)');
-  sgl.addColorStop(0.35,'rgba(255,170,80,0.26)');
-  sgl.addColorStop(1,'rgba(255,140,60,0)');
-  ctx.fillStyle=sgl;
-  ctx.beginPath();ctx.arc(sux,suy,sur*3.4,0,7);ctx.fill();
-  ctx.fillStyle='#fff3c0';
-  ctx.beginPath();ctx.arc(sux,suy,sur,0,7);ctx.fill();
+  var sux=ox2+S*0.60;                          /* 水平線の明るいあたり */
   /* 海（水平線のきらめき） */
   ctx.fillStyle='#2f6f84';
   ctx.fillRect(ox2,oy2+S*0.575,S,S*0.115);
@@ -2859,45 +2850,6 @@ function drawJamaicaBack(ox2,oy2,S,lit){       /* ジャマイカの夕方 */
   palm(ox2+S*0.315,oy2+S*0.715,S*0.21,1);
   palm(ox2+S*0.635,oy2+S*0.705,S*0.24,-1);
   palm(ox2+S*0.945,oy2+S*0.695,S*0.33,1);
-  ctx.restore();
-}
-function drawBunting(ox2,oy2,S,lit){           /* 弓なりに3回たわむ三角旗 */
-  var FC=['#ffd400','#17171c','#f4f1ea','#1d8a3f'];   // 黄・黒・白・緑
-  var y0=oy2+S*0.055,sag=S*0.085;
-  var sway=Math.sin(now*0.00055)*S*0.008;
-  function yAt(t){                             // 3つの弧をつなぐたわみ
-    var u=t*3,seg=Math.min(2,Math.floor(u)),fr=u-seg;
-    return y0+Math.sin(Math.PI*fr)*sag+sway*Math.sin(Math.PI*u);
-  }
-  ctx.save();
-  ctx.beginPath();ctx.rect(ox2,oy2,S,S*0.50);ctx.clip();
-  ctx.strokeStyle='rgba(42,34,24,0.85)';       // 紐
-  ctx.lineWidth=Math.max(1.3,S*0.0055);
-  ctx.beginPath();
-  for(var q=0;q<=90;q++){
-    var qx=ox2+S*(q/90),qy=yAt(q/90);
-    if(q===0)ctx.moveTo(qx,qy);else ctx.lineTo(qx,qy);
-  }
-  ctx.stroke();
-  var N=33,fw=S*0.030,fh=S*0.058;              // 三角の旗
-  for(var i=0;i<N;i++){
-    var t=(i+0.5)/N;
-    var fx=ox2+S*t,fy=yAt(t);
-    var sl=(yAt(Math.min(1,t+0.012))-yAt(Math.max(0,t-0.012)));
-    var ang=Math.atan2(sl,S*0.024);
-    ctx.save();
-    ctx.translate(fx,fy);
-    ctx.rotate(ang);
-    ctx.fillStyle=FC[i%4];
-    ctx.beginPath();
-    ctx.moveTo(-fw/2,0);ctx.lineTo(fw/2,0);ctx.lineTo(0,fh);
-    ctx.closePath();ctx.fill();
-    ctx.fillStyle='rgba(0,0,0,0.16)';          // 陰
-    ctx.beginPath();
-    ctx.moveTo(0,0);ctx.lineTo(fw/2,0);ctx.lineTo(0,fh);
-    ctx.closePath();ctx.fill();
-    ctx.restore();
-  }
   ctx.restore();
 }
 function drawConga(cx,cy,cw,v){                /* パーカッション（コンガ） */
@@ -3576,10 +3528,9 @@ function drawIdol(){
     drawCake(ox2+S*0.84,oy2+S*0.885,S*0.26);
   }
   if(mky){                                      // パーカッション 左に1、右に2
-    drawConga(ox2+S*0.145,oy2+S*0.905,S*0.175,0);
-    drawConga(ox2+S*0.805,oy2+S*0.905,S*0.185,1);
-    drawConga(ox2+S*0.925,oy2+S*0.900,S*0.155,2);
-    drawBunting(ox2,oy2,S,lit);                 // 三角の旗の連なり
+    drawConga(ox2+S*0.130,oy2+S*0.905,S*0.1225,0);
+    drawConga(ox2+S*0.790,oy2+S*0.905,S*0.1295,1);
+    drawConga(ox2+S*0.895,oy2+S*0.900,S*0.1085,2);
   }
   /* 舞台全体を少し暗く */
   ctx.fillStyle='rgba(0,0,0,'+(sea?0.30:(crw?0.44:0.22))+')';
@@ -6261,9 +6212,11 @@ function drawGirlBody(x,y,h,scale,face,cheer){
     }else{                                     /* 空いた腕は歌に合わせて動く */
       ctx.save();ctx.translate(x-w*0.46,y-h*0.10);ctx.rotate(0.55+up4);
       ctx.fillRect(-w*0.13,-h*0.06,w*0.26,h*0.36);ctx.restore();
-      ctx.beginPath();
-      ctx.arc(x-w*0.62-Math.sin(up4)*w*0.10,y+h*0.16-Math.cos(up4)*h*0.06,h*0.078,0,7);
-      ctx.fill();
+      if(!(R&&R.noPalm)){                      /* 丸い掌（いらない子もいる） */
+        ctx.beginPath();
+        ctx.arc(x-w*0.62-Math.sin(up4)*w*0.10,y+h*0.16-Math.cos(up4)*h*0.06,h*0.078,0,7);
+        ctx.fill();
+      }
     }
   }
   else if(cheer===2||cheer===3){                    // 片腕を胸の前へ、もう片腕は下ろす
@@ -6405,9 +6358,37 @@ function drawGirlBody(x,y,h,scale,face,cheer){
     }else if(hairOv===7){                 /* ベリーショート */
       ctx.fillRect(x-hr*1.04,hy-hr*0.42,hr*0.26,hr*0.42);
       ctx.fillRect(x+hr*0.78,hy-hr*0.42,hr*0.26,hr*0.42);
-    }else if(hairOv===9){                 /* ドレッドヘア：顔の両脇に太い束 */
+    }else if(hairOv===9){                 /* ドレッドヘア */
       ctx.beginPath();                    // 頭頂を覆う（顔にはかからない）
       ctx.arc(x,hy-hr*0.30,hr*1.14,Math.PI*1.02,Math.PI*1.98);ctx.fill();
+      if(R&&R.bandana){                   /* 後ろでくくって右から少しのぞく */
+        ctx.fillStyle=HC;
+        ctx.beginPath();                  // 後ろにまとめた根元
+        ctx.ellipse?ctx.ellipse(x+hr*0.70,hy+hr*0.12,hr*0.40,hr*0.34,0.35,0,7)
+                   :ctx.arc(x+hr*0.70,hy+hr*0.12,hr*0.38,0,7);
+        ctx.fill();
+        for(var db=0;db<4;db++){          // 右肩へ流れる束
+          var bsw=hr*(0.10+db*0.09);
+          var btx=x+hr*(0.88+db*0.13);
+          var bty=hy+hr*(0.10+db*0.045);
+          var blen=hr*(1.30-db*0.20);
+          ctx.beginPath();
+          ctx.moveTo(btx-hr*0.14,bty);
+          ctx.quadraticCurveTo(btx-hr*0.12+bsw,bty+blen*0.58,
+                               btx-hr*0.08+bsw*1.5,bty+blen);
+          ctx.lineTo(btx+hr*0.16+bsw*1.5,bty+blen);
+          ctx.quadraticCurveTo(btx+hr*0.18+bsw,bty+blen*0.58,btx+hr*0.14,bty);
+          ctx.closePath();ctx.fill();
+          ctx.beginPath();                // 先の丸み
+          ctx.arc(btx+hr*0.04+bsw*1.5,bty+blen,hr*0.14,0,7);ctx.fill();
+          if(db<2){                       // 束に通したビーズ
+            ctx.fillStyle=db?'#1d7a3a':'#ffd400';
+            ctx.beginPath();
+            ctx.arc(btx+hr*0.02+bsw*1.1,bty+blen*0.72,hr*0.13,0,7);ctx.fill();
+            ctx.fillStyle=HC;
+          }
+        }
+      }else{
       for(var dk=0;dk<5;dk++){            // 頭の後ろから上に出る短い束
         var ka=Math.PI*(1.10+dk*0.20);
         ctx.beginPath();
@@ -6437,6 +6418,7 @@ function drawGirlBody(x,y,h,scale,face,cheer){
           ctx.fillStyle=HC;
         }
       }
+      }
     }else if(hairOv===4){                 /* ショートカット */
       ctx.fillRect(x-hr*1.14,hy-hr*0.45,hr*0.40,hr*0.75);
       ctx.fillRect(x+hr*0.74,hy-hr*0.45,hr*0.40,hr*0.75);
@@ -6459,6 +6441,51 @@ function drawGirlBody(x,y,h,scale,face,cheer){
       ctx.fillRect(x-hr*1.2,hy-hr*0.5,hr*0.42,hr*1.6);
       ctx.fillRect(x+hr*0.78,hy-hr*0.5,hr*0.42,hr*1.6);
     }
+  }
+  if(R&&R.bandana&&!back){                       /* 頭を巻いたバンダナ */
+    ctx.save();
+    ctx.beginPath();                             // 頭の丸みに沿って巻く
+    ctx.arc(x,hy,hr*1.12,Math.PI*0.98,Math.PI*2.02);
+    ctx.lineTo(x+hr*1.12,hy-hr*0.18);
+    ctx.lineTo(x-hr*1.12,hy-hr*0.18);
+    ctx.closePath();
+    ctx.clip();
+    ctx.fillStyle='#1d8a3f';                     // 緑の地
+    ctx.fillRect(x-hr*1.2,hy-hr*1.3,hr*2.4,hr*1.2);
+    ctx.fillStyle='#ffd400';                     // 黄の斜め縞
+    for(var bq=-3;bq<=4;bq++){
+      ctx.save();
+      ctx.translate(x+bq*hr*0.38,hy-hr*0.70);
+      ctx.rotate(-0.42);
+      ctx.fillRect(-hr*0.085,-hr*0.9,hr*0.17,hr*1.8);
+      ctx.restore();
+    }
+    ctx.fillStyle='rgba(224,36,58,0.85)';        // 赤の細い縞
+    for(var bq2=-3;bq2<=4;bq2++){
+      ctx.save();
+      ctx.translate(x+bq2*hr*0.38+hr*0.19,hy-hr*0.70);
+      ctx.rotate(-0.42);
+      ctx.fillRect(-hr*0.045,-hr*0.9,hr*0.09,hr*1.8);
+      ctx.restore();
+    }
+    ctx.fillStyle='rgba(0,0,0,0.20)';            // ふちの陰
+    ctx.fillRect(x-hr*1.2,hy-hr*0.30,hr*2.4,hr*0.12);
+    ctx.restore();
+    ctx.strokeStyle='rgba(0,0,0,0.25)';          // 巻き口の線
+    ctx.lineWidth=Math.max(1,hr*0.07);
+    ctx.beginPath();
+    ctx.moveTo(x-hr*1.08,hy-hr*0.26);
+    ctx.quadraticCurveTo(x,hy-hr*0.12,x+hr*1.08,hy-hr*0.26);
+    ctx.stroke();
+    ctx.fillStyle='#1d8a3f';                     // 右後ろの結び目
+    ctx.beginPath();ctx.arc(x+hr*1.02,hy-hr*0.46,hr*0.21,0,7);ctx.fill();
+    ctx.beginPath();                             // 垂れた端
+    ctx.moveTo(x+hr*1.02,hy-hr*0.52);
+    ctx.lineTo(x+hr*1.52,hy-hr*0.18);
+    ctx.lineTo(x+hr*1.12,hy-hr*0.14);
+    ctx.closePath();ctx.fill();
+    ctx.fillStyle='#ffd400';
+    ctx.beginPath();ctx.arc(x+hr*1.06,hy-hr*0.50,hr*0.09,0,7);ctx.fill();
   }
   if(R&&R.frill){                                /* ヘッドドレス */
     ctx.fillStyle='#ffffff';
