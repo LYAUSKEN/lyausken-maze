@@ -367,36 +367,54 @@ var girl2={state:'none',x:0,y:0,eater:null,eatT:0,face:'s',lock:false,cat:false}
 var hist=[],askLock=false,askT=0,girlPen=0,askWho=1,catMembers=0,catOv=false;
 /* ===== レアなワトナー ===== */
 var RARE=[
- {id:'cat',   ja:'猫のお面',    en:'CAT MASK',  dress:'#ffffff', hair:0,  mask:1, noPalm:1},
+ {id:'cat',   ja:'猫のお面',    en:'CAT MASK',  dress:'#ffffff', hair:0,  mask:1, noPalm:1,
+  nm:'Verra', song:'CORVETTE'},
  {id:'bald',  ja:'坊主',        en:'SHAVED',    dress:'#ffffff', hair:-1,
-  tank:'#cfd2d6', blueFlower:1, shadow:1, eyesShut:1, noPalm:1},
- {id:'swim',  ja:'水着',        en:'SWIMSUIT',  dress:'#ff5f8d', hair:0,  swim:1, noPalm:1},
+  tank:'#cfd2d6', blueFlower:1, shadow:1, eyesShut:1, noPalm:1,
+  nm:'Ingrid', song:'森の輝き'},
+ {id:'swim',  ja:'水着',        en:'SWIMSUIT',  dress:'#ff5f8d', hair:0,  swim:1, noPalm:1,
+  nm:'Rem', song:'時を越えてわかった'},
  {id:'afro',  ja:'アフロ',      en:'AFRO',      dress:'#ffffff', hair:3,
-  skin:'#c98f5e', tri:1, guitar:1, stand:1, noPalm:1},
+  skin:'#c98f5e', tri:1, guitar:1, stand:1, noPalm:1,
+  nm:'Keala', song:'西郷山の空'},
  {id:'long',  ja:'ロングヘア',  en:'LONG HAIR', dress:'#ffffff', hair:2,
-  hairCol:'#c9a8e8', track:1, sneaker:'#ff79b0', headset:1, sideStart:1, noPalm:1},
- {id:'skate', ja:'スケボー',    en:'SKATER',    dress:'#b9ecd9', hair:4,  board:1, doit:1, noPalm:1},
- {id:'kaiju', ja:'怪獣',        en:'KAIJU',     dress:'#4fbf5a', hair:-1, kaiju:1, headset:1, noPalm:1},
+  hairCol:'#c9a8e8', track:1, sneaker:'#ff79b0', headset:1, sideStart:1, noPalm:1,
+  nm:'Sakra', song:'More cake,'},
+ {id:'skate', ja:'スケボー',    en:'SKATER',    dress:'#b9ecd9', hair:4,  board:1, doit:1, noPalm:1,
+  nm:'Mio', song:'深夜のファミレス'},
+ {id:'kaiju', ja:'怪獣',        en:'KAIJU',     dress:'#4fbf5a', hair:-1, kaiju:1, headset:1, noPalm:1,
+  nm:'Venomilla', song:'EIRTH PULSE'},
  {id:'stripe',ja:'ストライプ',  en:'STRIPES',   dress:'#ffffff', hair:0,  vstripe:1, noPalm:1,
-  uneck:1},
+  uneck:1,
+  nm:'Hani', song:'長い雨'},
  {id:'witch', ja:'魔女',        en:'WITCH',     dress:'#15151c', hair:0,  hat:1,
-  pom:1, redTee:1, knee:1, hang:1, wand:1, noPalm:1},
+  pom:1, redTee:1, knee:1, hang:1, wand:1, noPalm:1,
+  nm:'Sarry', song:'恋する魔女の放物線'},
  {id:'afro2', ja:'横縞お団子',  en:'STRIPED BUN',dress:'#ffffff', hair:5,  hstripe:1,
   sit:1, noHold:1, hang:1, piano:1, still:1, offX:-0.32, bodySide:1, seat:1,
-  slowMouth:1, eyesLoop:1},
- {id:'flower',ja:'花柄',        en:'FLORAL',    dress:'#fff3e0', hair:0,  flower:1, noPalm:1},
+  slowMouth:1, eyesLoop:1,
+  nm:'Satomi', song:'カメリアのように'},
+ {id:'flower',ja:'花柄',        en:'FLORAL',    dress:'#fff3e0', hair:0,  flower:1, noPalm:1,
+  nm:'Ann', song:'エサヌカ線の果て'},
  {id:'crow',  ja:'カラス',      en:'CROW',      dress:'#ffffff', hair:6,  crow:1,
-  jeans:1, sleeve:'#ffffff', stand:1, noHold:1, guitar:1, guitarCol:'#c0392b', sit:1, noPalm:1},
- {id:'wolf',  ja:'狼',          en:'WOLF',      dress:'#9aa0a8', hair:-1, wolf:1, noPalm:1},
+  jeans:1, sleeve:'#ffffff', stand:1, noHold:1, guitar:1, guitarCol:'#c0392b', sit:1, noPalm:1,
+  nm:'Shumari', song:'煌めくこの世界'},
+ {id:'wolf',  ja:'狼',          en:'WOLF',      dress:'#9aa0a8', hair:-1, wolf:1, noPalm:1,
+  nm:'Naomi', song:'THE WOLF'},
  {id:'dots',  ja:'水玉',        en:'POLKA DOT', dress:'#ffffff', hair:8,  dots:1,
   sweat:1, dotCol:'#d8dadd', headset:1, still:1, hairCol:'#c9a8e8',
-  armsStill:1, walk:1, skin:'#eef1f7', eyeCol:'#2f7fd0', longBang:1, noPalm:1},
+  armsStill:1, walk:1, skin:'#eef1f7', eyeCol:'#2f7fd0', longBang:1, noPalm:1,
+  nm:'M4', song:'POLKA DOTS'},
  {id:'lolita',ja:'ロリータ',    en:'LOLITA',    dress:'#f06fa8', hair:1,  frill:1, noPalm:1,
-  noTailBox:1},
- {id:'metal', ja:'メタル',      en:'HEAVY METAL',dress:'#141418',hair:2,  metal:1, noPalm:1},
- {id:'mermaid',ja:'人魚',       en:'MERMAID',   dress:'#2fd0c0', hair:-1, mermaid:1, noPalm:1},
+  noTailBox:1,
+  nm:'Ai', song:'スーツ de メイド'},
+ {id:'metal', ja:'メタル',      en:'HEAVY METAL',dress:'#141418',hair:2,  metal:1, noPalm:1,
+  nm:'Ririel', song:'世界をぶっ壊せ！'},
+ {id:'mermaid',ja:'人魚',       en:'MERMAID',   dress:'#2fd0c0', hair:-1, mermaid:1, noPalm:1,
+  nm:'Rora', song:'夕凪の浜'},
  {id:'monkey',ja:'おさるを抱っこ',en:'MONKEY',  dress:'#ffffff', hair:9,  monkey:1,
-  hairCol:'#2b1a0e', chem:1, bandana:1, skin:'#a9784c', noPalm:1}
+  hairCol:'#2b1a0e', chem:1, bandana:1, skin:'#a9784c', noPalm:1,
+  nm:'Janis', song:'人生って何だ？'}
 ];
 function rareById(id){for(var i=0;i<RARE.length;i++)if(RARE[i].id===id)return RARE[i];return null;}
 var rareOv=null,detailOv=false,micOv=0;  // 描画中のレア設定／細密描画／マイク（歌う姿）
@@ -411,7 +429,8 @@ var soloName={},soloDone={},liveMode='group',soloId=null,SOLO_NEED=3;
 function ownCount(id){return owned[id]||0;}
 function soloOK(id){return ownCount(id)>=SOLO_NEED;}
 function soloList(){var a=[];for(var i=0;i<RARE.length;i++)if(soloDone[RARE[i].id])a.push(RARE[i].id);return a;}
-function soloLabel(id){return soloName[id]||rareById(id).ja;}
+function soloLabel(id){var R=rareById(id);return soloName[id]||(R&&R.nm)||(R&&R.ja)||id;}
+function soloSong(id){var R=rareById(id);return (R&&R.song)||'';}
 var RARE_BASE=0.14;                    // レアが出る基本の確率
 function ownedList(){var a=[];for(var i=0;i<RARE.length;i++)if(owned[RARE[i].id])a.push(RARE[i].id);return a;}
 function rareChance(){return Math.min(0.6,RARE_BASE+tipBoost);}
@@ -4259,9 +4278,27 @@ function drawIdol(){
   ctx.fillStyle='rgba(255,212,0,'+(0.25+0.75*lit)+')';
   bt(soloId?('SOLO  '+soloLabel(soloId)):((team.length>=7)?'NEW WATONERS':('WATONER '+idolN)),
      W/2,oy2-16,3,'center',2);
+  if(soloId){                                 /* 曲のタイトル（書いたとおりの字で） */
+    var ttl=soloSong(soloId);
+    if(ttl){
+      ctx.save();
+      ctx.font='700 15px "Hiragino Kaku Gothic ProN","Yu Gothic","Noto Sans JP",sans-serif';
+      ctx.textAlign='center';ctx.textBaseline='alphabetic';
+      var tw5=0;
+      try{tw5=ctx.measureText(ttl).width;}catch(e){}
+      if(tw5>W-2*PAD-8){                      // 長いときは少し縮める
+        ctx.font='700 12px "Hiragino Kaku Gothic ProN","Yu Gothic","Noto Sans JP",sans-serif';
+      }
+      ctx.fillStyle='rgba(0,0,0,0.55)';        // 読みやすいように影
+      ctx.fillText(ttl,W/2+1,oy2-37);
+      ctx.fillStyle='rgba(255,255,255,'+(0.35+0.6*lit)+')';
+      ctx.fillText(ttl,W/2,oy2-38);
+      ctx.restore();
+    }
+  }
   if(idolDemo){                               /* 確認用：鳴っている曲 */
     ctx.fillStyle='rgba(255,255,255,0.5)';
-    bt('SONG '+(songOn?songNow.toUpperCase():'SYNTH'),W/2,oy2-34,1,'center',2);
+    bt('SONG '+(songOn?songNow.toUpperCase():'SYNTH'),W/2,oy2-58,1,'center',2);
   }
   if(!idolT){
     ctx.fillStyle='rgba(255,255,255,'+(0.25+0.5*lit)+')';
@@ -8407,7 +8444,17 @@ function drawTitle(){
   ctx.fillStyle='rgba(255,138,192,0.75)';       /* 次に出る子 */
   ctx.font='400 10px "Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif';
   ctx.textAlign='center';ctx.textBaseline='alphabetic';
-  ctx.fillText(rareById(demoNext()).ja,db.x+db.w/2,db.y+db.h+12);
+  (function(){var di=demoNext();
+    ctx.fillText(soloLabel(di),db.x+db.w/2,db.y+db.h+12);
+    var ds=soloSong(di);
+    if(ds){
+      ctx.save();
+      ctx.font='400 10px "Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif';
+      ctx.fillStyle='rgba(255,255,255,0.55)';
+      ctx.fillText(ds,db.x+db.w/2,db.y+db.h+25);
+      ctx.restore();
+    }
+  })();
 
   /* START */
   var sb=startBtn(),pul=0.5+0.5*Math.sin(now*0.005);
