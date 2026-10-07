@@ -368,48 +368,517 @@ var hist=[],askLock=false,askT=0,girlPen=0,askWho=1,catMembers=0,catOv=false;
 /* ===== レアなワトナー ===== */
 var RARE=[
  {id:'cat',   ja:'猫のお面',    en:'CAT MASK',  dress:'#ffffff', hair:0,  mask:1, noPalm:1,
-  nm:'Verra', song:'CORVETTE'},
+  nm:'Verra', song:'CORVETTE',
+  lyrics:[
+ 'Woh, woh, who, woh,',
+ 'Woh, who, woh, woh…',
+ 'Waking up early, walking my dog down the street',
+ 'Morning air is chilly, but the pavement feels neat',
+ 'Stopped at Hudson Street, got a craving for sweets',
+ 'Chocolate donut, old-fashioned, yeah, that’s my treat',
+ 'Stepped out the door with my bag in my hand',
+ 'And then I saw it—rolling past like contraband',
+ 'It was his Corvette, sliding right by',
+ 'With a cute little girl sitting right on the side!',
+ 'She’s rocking a yellow Prada top, short hair, so chic',
+ 'And I’m just standing here in my basic ZARA tee, feeling weak!',
+ 'Oh, I am gonna snap! I am losing my mind!',
+ 'Honestly? I hope the world ends tomorrow, I don’t mind!',
+ 'Yeah, let the world end tomorrow!',
+ 'Walking back home, want to scream, want to cry',
+ 'Why does every little thing have to pass me right by?',
+ 'I’m just trying to live, drinking my coffee cold',
+ 'While they’re driving away in a story untold']},
  {id:'bald',  ja:'坊主',        en:'SHAVED',    dress:'#ffffff', hair:-1,
   tank:'#cfd2d6', blueFlower:1, shadow:1, eyesShut:1, noPalm:1,
-  nm:'Ingrid', song:'森の輝き'},
+  nm:'Ingrid', song:'森の輝き',
+  lyrics:[
+ 'La La La La La La',
+ 'Lu Lu Lu Lu Lu Lu',
+ 'La La La La La La',
+ 'Lu Lu Lu Lu Lu Lu',
+ 'Golden mist upon the mossy ground',
+ 'Ancient roots beneath my feet unbound',
+ 'A sudden silence falls across the trees',
+ 'Carried softly on the Nordic breeze',
+ '　',
+ 'Oh, shining world, so wild and free',
+ 'Awakening in the sacred sea of green',
+ 'From the first breath of the morning light',
+ 'To the shadows of the endless night',
+ '　',
+ 'La La La La La La',
+ 'Lu Lu Lu Lu Lu Lu',
+ 'La La La La La La',
+ 'Lu Lu Lu Lu Lu Lu',
+ 'The river starts to strum its liquid strings',
+ 'A wood-pecker beats out a rhythmic ring',
+ 'Velvet leaves that cradle every seed',
+ 'Dancing fawns upon the silver mead',
+ '　',
+ 'Oh, shining world, so wild and free',
+ 'Awakening in the sacred sea of green',
+ 'From the first breath of the morning light',
+ 'To the shadows of the endless night',
+ '　',
+ 'Hear the forest breathing deep and low',
+ 'In the twilight where the spirits go',
+ 'Every leaf and stone a sacred song',
+ 'Where we belong',
+ '　',
+ 'Shining world...',
+ 'In the sacred',
+ 'La La La La La La',
+ 'Lu Lu Lu Lu']},
  {id:'swim',  ja:'水着',        en:'SWIMSUIT',  dress:'#ff5f8d', hair:0,  swim:1, noPalm:1,
   nm:'Rem', song:'時を越えてわかった'},
  {id:'afro',  ja:'アフロ',      en:'AFRO',      dress:'#ffffff', hair:3,
   skin:'#c98f5e', tri:1, guitar:1, stand:1, noPalm:1,
-  nm:'Keala', song:'西郷山の空'},
+  nm:'Keala', song:'西郷山の空',
+  lyrics:[
+ '渋谷の色がかわる',
+ 'ピンクの空に包まれて',
+ '人々は足を止め',
+ '見上げる先の夕焼け群青',
+ '西郷山（さいごうやま）の風を受けて',
+ 'そこから見る世界の尾根',
+ 'グラデーションに惑わされて',
+ '夜になるまで 時間よ止まれ',
+ '　',
+ '明日があることの幸せ',
+ 'これ以上何を望むだろう',
+ '暗いニュースは忘れ',
+ '明るい未来を信じてるよ',
+ 'ピンクとオレンジの世界で',
+ '僕たちは強くなれるから',
+ '笑い合っていようよいつも',
+ 'この瞬間（とき）を刻みながら',
+ '　',
+ '沈む太陽を見つめている',
+ '言葉がなくても通じ合える',
+ 'ここにいるだけでいい',
+ '世界のことも気にならない',
+ '争いのない青空を',
+ '僕らはずっと夢見てる',
+ 'この瞬間を永遠に',
+ '胸に刻んでおきたいんだ',
+ '　',
+ '明日があることの幸せ',
+ 'これ以上何を望むだろう',
+ '暗いニュースは忘れ',
+ '明るい未来を信じてるよ',
+ 'ピンクとオレンジの世界で',
+ '僕たちは強くなれるから',
+ '笑い合っていようよいつも',
+ 'この瞬間（とき）を刻みながら',
+ '　',
+ '（明るい未来へ……）']},
  {id:'long',  ja:'ロングヘア',  en:'LONG HAIR', dress:'#ffffff', hair:2,
   hairCol:'#c9a8e8', track:1, sneaker:'#ff79b0', headset:1, sideStart:1, noPalm:1,
-  nm:'Sakra', song:'More cake,'},
+  nm:'Sakra', song:'More cake,',
+  lyrics:[
+ 'Oh, I\'m so starving!',
+ 'Give me sugar, give me butter, give me everything!',
+ '　',
+ '朝のベッドの中で目覚ましが鳴る前に',
+ '夢の中でもうフォークを握りしめてるの',
+ 'こんな曇り空なんて吹き飛ばしちゃえ！',
+ '甘い魔法をかけて、お気に入りのエプロンをつけて',
+ '　',
+ 'タルトタタン、ミルフィーユ！朝から晩まで食べたいの！',
+ 'ショーケースの前で踊り出す私のハート',
+ 'スポンジも、タルトも、クリームも全部！',
+ '世界じゅうのオーブンを独り占めしたい！',
+ 'Victoria sponge, Battenberg, Lemon drizzle too!',
+ 'Scone and Eclair, I want them all for you and me!',
+ '　',
+ 'ティータイムなんて待ちきれない、一日中がティータイム！',
+ 'お皿の上のパラダイス、どこから食べようかな',
+ 'Chocolate fudge cakeの濃厚な甘さに溺れて',
+ 'Trifleの層をスプーンですくう瞬間が最高なの！',
+ '　',
+ '甘い香りに包まれて、ロンドンの街をスキップ',
+ 'カロリーなんて気にしない、だって幸せだもん！',
+ 'Macaron, Mille-feuille, Fruit tart, Cheesecake,',
+ 'Black forest, Opera, Croquembouche, Madeleine!',
+ '名前を叫ぶだけで、お腹が鳴り出しそう！',
+ '　',
+ 'ブラウニー！フォンダンショコラ！朝から晩まで食べたいの！',
+ '最後はやっぱり大好きな Victoria sponge！',
+ '紅茶を一口飲んだら、また最初から始めよう？',
+ '　',
+ 'More cake, please!',
+ 'Yes, Mummy, just one more slice!']},
  {id:'skate', ja:'スケボー',    en:'SKATER',    dress:'#b9ecd9', hair:4,  board:1, doit:1, noPalm:1,
-  nm:'Mio', song:'深夜のファミレス'},
+  nm:'Mio', song:'深夜のファミレス',
+  lyrics:[
+ '大宮駅東口、アルシェの裏抜け',
+ '冷えた風が頬を打つ、午前二時の風邪手前',
+ '「どこ行く？」なんて話になりゃしない',
+ '選択肢は一択、ドリンクバーのある空間（ばしょ）',
+ 'ガキの頃は親と、今は地元の友達と',
+ 'すっぴん隠すキャップ深く被り、ドアを開ける「いらっしゃいませ」',
+ '見知らぬおじさんが新聞読んでる、その横を通り抜け',
+ 'お気に入りの4人掛けのボックス席に滑り込む',
+ 'メニュー開けば見慣れた文字、だけど妙にワクワクする',
+ '「とりあえず…アイスコーヒーと、あとポテトね」',
+ 'ファミレスの天井は、なぜか少し薄汚れてる',
+ 'ネオンライトの影、揺れるメロンソーダの泡',
+ '終電逃した帰り道、ここが私たちのトーキョー（いや、大宮）',
+ 'スープバーのコーンポタージュ、底に残るつぶつぶ',
+ 'あの日からずっと変わらない、このゆるい夜の空気',
+ '22歳、まわりの友達は就職とか結婚とか',
+ '「焦るなよ」って言われても、このメニューみたいに決められない',
+ 'ドリンクバーのコーナー、炭酸とカルピスをミックスする',
+ '甘酸っぱい失敗も、ここでなら全部笑い話にできる',
+ 'タッチパネルじゃなくて、ボタン式のドリンクサーバー',
+ '押した瞬間「プシュー」って鳴る、あのチープな音が好き',
+ '隣の席の女子高生は、恋バナで盛り上がってる',
+ '「ねえ、聞いてよ」って、私も負けじとスマホを見せる',
+ '深夜のファミレス、時間の針が止まったみたいな錯覚',
+ '店員の「ごゆっくりどうぞ」の呪文に甘えてる',
+ '深夜3時、レシートの束は山積み',
+ '伝票の裏に落書きした、未来の自分の似顔絵',
+ 'こんな街の、こんな場所で、私たち生きてる',
+ '明日になればまた現実が待ってる、でも今はまだ……',
+ 'このソファの沈み込み具合が、あたしを包む',
+ 'ファミレスの天井は、なぜか少し薄汚れてる',
+ 'ネオンライトの影、揺れるメロンソーダの泡',
+ '終電逃した帰り道、ここが私たちのトーキョー（いや、大宮）',
+ 'スープバーのコーンポタージュ、底に残るつぶつぶ',
+ 'あの日からずっと変わらない、このゆるい夜の空気']},
  {id:'kaiju', ja:'怪獣',        en:'KAIJU',     dress:'#4fbf5a', hair:-1, kaiju:1, headset:1, noPalm:1,
   nm:'Venomilla', song:'EIRTH PULSE'},
  {id:'stripe',ja:'ストライプ',  en:'STRIPES',   dress:'#ffffff', hair:0,  vstripe:1, noPalm:1,
   uneck:1,
-  nm:'Hani', song:'長い雨'},
+  nm:'Hani', song:'長い雨',
+  lyrics:[
+ '窓辺のカップに　雨粒が落ちる',
+ 'あなたの名前を　指でなぞった',
+ '駅までの道も　今日は遠くて',
+ '傘のしずくに　言葉を隠す',
+ '　',
+ '季節は静かに　ページをめくる',
+ '会えない時間が　胸に積もる',
+ '　',
+ 'いつもよりも長い雨、いつまで続くの？',
+ 'あなたに会えない日々が愛しい。',
+ '濡れた便箋に　伝えたいこと',
+ '書いては消して　また朝を待つ',
+ '　',
+ '電話の向こうで　笑う声だけ',
+ '遠い街から　届いてくる',
+ 'あなたがくれた　小さな栞',
+ '読みかけのままで　季節を越える',
+ '　',
+ '晴れた空より　雨音の中',
+ 'あなたを思うと　やさしくなれる',
+ '　',
+ 'いつもよりも長い雨、いつまで続くの？',
+ 'あなたに会えない日々が愛しい。',
+ 'ひとつの約束　胸に抱いて',
+ '次に会う日を　指折り数える',
+ '　',
+ '雨がやんだら　まっすぐ行くわ',
+ 'あなたの町まで　迷わず行くわ',
+ '　',
+ 'いつもよりも長い雨、いつまで続くの？',
+ 'あなたに会えない日々が愛しい。',
+ '窓辺に差し込む　淡い朝には',
+ 'あなたの笑顔を　いちばんに見る',
+ '　',
+ '雨の向こうで　あなたを待つわ']},
  {id:'witch', ja:'魔女',        en:'WITCH',     dress:'#15151c', hair:0,  hat:1,
   pom:1, redTee:1, knee:1, hang:1, wand:1, noPalm:1,
-  nm:'Sarry', song:'恋する魔女の放物線'},
+  nm:'Sarry', song:'恋する魔女の放物線',
+  lyrics:[
+ '「ねえ、目をつぶって……',
+ 'これって、魔法じゃないんだからね！」',
+ '　',
+ '好きなひとに魔法をかけるわ',
+ '水晶玉から見える世界に',
+ 'あなたの宇宙が見えるの',
+ 'おどけた横顔　独り占めしたいの',
+ '　',
+ '教科書の端っこに書いた星座',
+ '赤いインクでなぞる放課後',
+ '心臓のパルスが　ビート刻んで',
+ 'もう隠しきれない　このトキメキ',
+ '　',
+ 'ロケットの後ろに隠れてお弁当渡した',
+ 'わたしの引力で引き返してね',
+ 'すれ違う廊下　魔法の呪文は',
+ 'いつだって「スキ」のひと言なの！',
+ '気付いてよね　ねえ、ダーリン！',
+ '　',
+ 'ほうきをバイクに持ち替えて',
+ '夜空を飛び出す　スピード上げて',
+ 'あなたの窓辺で　そっと夜風に',
+ '甘い香水（パルファン）を忍ばせるの',
+ '　',
+ 'おそろいのシャープペンシル',
+ '落としたふりして近づく作戦',
+ 'あまのじゃくな態度　反省しちゃうけど',
+ '瞳の奥なら　見つめ合えるよ',
+ '　',
+ 'ロケットの後ろに隠れてお弁当渡した',
+ 'わたしの引力で引き返してね',
+ '星屑を散りばめた制服のポケット',
+ 'あふれ出す「スキ」が止まらないの',
+ '受け止めてよね　ねえ、ダーリン！',
+ '　',
+ '鏡よ鏡、教えて　恋する魔女の行方を',
+ '特製の媚薬より　あなたの笑顔が効くみたい',
+ '　',
+ 'ロケットの後ろに隠れてお弁当渡した',
+ 'わたしの引力で引き返してね',
+ 'I miss you... 届いてる？　魔法のその先で',
+ '永遠（とわ）にちいさな奇跡をあげる',
+ '私だけの魔法にかかれ！',
+ '　',
+ '「……なんてね。',
+ '来週も、お弁当作るからさ！」']},
  {id:'afro2', ja:'横縞お団子',  en:'STRIPED BUN',dress:'#ffffff', hair:5,  hstripe:1,
   sit:1, noHold:1, hang:1, piano:1, still:1, offX:-0.32, bodySide:1, seat:1,
   slowMouth:1, eyesLoop:1,
-  nm:'Satomi', song:'カメリアのように'},
+  nm:'Satomi', song:'カメリアのように',
+  lyrics:[
+ '気がつけば　遠くまで来ていた',
+ '最後のメール　まだ開けないまま',
+ 'あなたの痛みも　優しさも',
+ '痛いほど　よくわかるから',
+ 'いつまで続くのだろうと',
+ 'すれ違った　長いみとせ',
+ '出会った日の　あなたの笑顔',
+ '思い出すたび　胸が締めつけられる',
+ '終わりはいつも　突然やってくる',
+ 'まだ咲けるはずなのに……',
+ '春を知らない　カメリアのように',
+ '　',
+ '間違えてカバンに詰めた',
+ 'あなたの写真を',
+ '色褪せるまで　見つめていよう',
+ '　',
+ '写真を破れない　こんなわたしじゃ',
+ '次の恋なんて　遠いのだろう',
+ 'あなたのぬくもりを　消したいのに',
+ '時間が解決するって　本当かな',
+ '背中向けて眠った　深夜の3時',
+ '窓越しの街灯が　やけに滲んでいた',
+ '始まりは　いつ来るのかしら',
+ '渡り鳥は　知っているの？',
+ 'まだ見ぬ春を待つ　カメリアのように']},
  {id:'flower',ja:'花柄',        en:'FLORAL',    dress:'#fff3e0', hair:0,  flower:1, noPalm:1,
-  nm:'Ann', song:'エサヌカ線の果て'},
+  nm:'Ann', song:'エサヌカ線の果て',
+  lyrics:[
+ '小麦色に焼けた肌に',
+ '赤いビキニが似合うねと笑う',
+ '不意の言葉に胸が跳ねて',
+ '始まる季節に期待を寄せる',
+ 'オフロードバイクの鼓動を上げて',
+ '君の背中をギュッと抱きしめた',
+ '　',
+ '風を切って走るエサヌカ線',
+ 'どこまでも続く青い空の下',
+ '私たちの短い夏は晴れるかな',
+ '一瞬の輝きを追いかけて',
+ '　',
+ '地平線が手招きしている',
+ '真っ直ぐな道を突き進め',
+ '排気音に消された声で',
+ '大好きだって呟いてみた',
+ 'バックミラーに映る笑顔が',
+ 'この瞬間を永遠に変える',
+ '　',
+ '風を切って走るエサヌカ線',
+ 'どこまでも続く青い空の下',
+ '私たちの短い夏は晴れるかな',
+ '一瞬の輝きを追いかけて',
+ '　',
+ '風を切って走るエサヌカ線',
+ 'どこまでも続く青い空の下',
+ '私たちの短い夏は晴れるかな',
+ '一瞬の輝きを追いかけて',
+ '風を切って走るエサヌカ線',
+ 'どこまでも続く青い空の下',
+ '私たちの短い夏は晴れるかな',
+ '一瞬の輝きを追いかけて',
+ '　',
+ '短い夏が過ぎ去っても',
+ '君の背中の温もりは忘れない',
+ 'エサヌカ線の果てに見えた',
+ 'あの青空を、ずっと。']},
  {id:'crow',  ja:'カラス',      en:'CROW',      dress:'#ffffff', hair:6,  crow:1,
   jeans:1, sleeve:'#ffffff', stand:1, noHold:1, guitar:1, guitarCol:'#c0392b', sit:1, noPalm:1,
-  nm:'Shumari', song:'煌めくこの世界'},
+  nm:'Shumari', song:'煌めくこの世界',
+  lyrics:[
+ '光の糸が編みあげる朝',
+ '氷の窓がひそやかにとけてゆく',
+ '青みを帯びたモミの葉の裾野に',
+ 'まだ眠る大地を踏み締める',
+ 'サクッ、と響く足音は',
+ '遠い記憶のなかの鼓動に似ている',
+ '　',
+ 'ふと、風が息をひそめた瞬間',
+ 'せせらぎのカルテットがはじまる',
+ '銀色の水面をわたる譜面（しるし）',
+ '鶯の声がやさしく空をほどき',
+ '遠くでキツツキが規則正しくドアを叩く',
+ '誰を待っているの？',
+ 'ここは北の果ての、秘密の回廊',
+ '　',
+ '足元には、古いドングリを抱きしめた',
+ '落ち葉のふかふかなクッション',
+ '「おやすみ」と「こんにちは」が交わる場所',
+ '空からこぼれた雨粒が',
+ '柔らかい土のステージを心地よく叩く拍手のように',
+ '森の静寂を彩っていく',
+ '　',
+ '木漏れ日のカーテンの向こう',
+ '子鹿たちのアンサンブルが始まるよ',
+ 'ステップを踏むたび、草木がささやく',
+ 'ああ、なんて美しく、煌めく世界',
+ '息を吸うたび、胸の奥が青く染まってゆく',
+ 'この森の物語は、ただ、そこにある',
+ '永遠の、目覚めの歌']},
  {id:'wolf',  ja:'狼',          en:'WOLF',      dress:'#9aa0a8', hair:-1, wolf:1, noPalm:1,
-  nm:'Naomi', song:'THE WOLF'},
+  nm:'Miyu', song:'THE WOLF',
+  lyrics:[
+ '(Ha, ha, ha, ha, ha...)',
+ '(Hey, hey, hey, hey, hey...)',
+ 'Yeah... You ready?',
+ 'Listen up.',
+ 'MIYU is in the building. Let\'s go!',
+ '　',
+ 'Step closer, come on over, don\'t be shy',
+ 'Lock your eyes on me, watch me fly',
+ 'Come this way, there\'s nothing to fear',
+ 'Together now, let’s ignite the night!',
+ 'Dance with me now, feel this heavy bass',
+ 'Moving through your body at a perfect pace',
+ 'Step to the rhythm, do you feel this groove?',
+ 'Thought I was just a sweet girl? Better move!',
+ '　',
+ 'Who do you think I am? Who am I?',
+ 'Tell me right now, are you ready to fly?',
+ 'I’m Miyu, sharpening my moves out in LA',
+ 'On this stage, I’m the one who leads the way',
+ 'They call me "The Wolf" when I\'m on the floor',
+ 'If you want more, then shout out for more!',
+ '　',
+ 'Under the LA sun, I carved out my skill',
+ 'A killer drill that nobody else can kill',
+ 'Sunset Boulevard, deep in the midnight street',
+ 'Danced all night long, tasting no defeat',
+ 'They called me "The Wolf" out in LA, you ask why?',
+ '\'Cause my eyes are on the hunt and I never let it slide!',
+ 'Biting down on the beat with a sharp-edged fang',
+ 'Creating a big bang right here where I hang!',
+ '　',
+ 'Who do you think I am? Who am I?',
+ 'Tell me right now, are you ready to fly?',
+ 'I’m Miyu, sharpening my moves out in LA',
+ 'On this stage, I’m the one who leads the way',
+ 'They call me "The Wolf" when I\'m on the floor',
+ 'If you want more, then shout out for more!',
+ '　',
+ 'That’s right.',
+ 'I\'m the Wolf.',
+ '(Ha, ha, ha, ha, ha...)',
+ 'Peace out.']},
  {id:'dots',  ja:'水玉',        en:'POLKA DOT', dress:'#ffffff', hair:8,  dots:1,
   sweat:1, dotCol:'#d8dadd', headset:1, still:1, hairCol:'#c9a8e8',
   armsStill:1, walk:1, skin:'#eef1f7', eyeCol:'#2f7fd0', longBang:1, noPalm:1,
-  nm:'M4', song:'POLKA DOTS'},
+  nm:'M4', song:'POLKA DOTS',
+  lyrics:[
+ 'One dot, two dots, three dots, four dots, five dots...',
+ 'Keeping the rhythm,',
+ 'Endless proliferation.',
+ 'Without disturbing the order.',
+ 'Is it cell division,',
+ 'Or a viral spread?',
+ 'Life or death—',
+ 'A symbol of eternity.',
+ 'The world of polka dots.',
+ 'From the body to society,',
+ 'From society to the earth,',
+ 'From the earth to the cosmos...',
+ 'No one knows what lies beyond the universe.',
+ 'Beyond the stars, a million galaxies',
+ 'Are spinning in the silent dark.',
+ 'Are we the dream, or the dreamer?',
+ '(Can you hear it?)',
+ 'A single heartbeat',
+ 'Is echoing through the infinite.',
+ 'fourteen dots, fifteen dots, sixteen dots, seventeen dots, eighteen dots, nineteen dots, twenty dots….']},
  {id:'lolita',ja:'ロリータ',    en:'LOLITA',    dress:'#f06fa8', hair:1,  frill:1, noPalm:1,
   noTailBox:1,
-  nm:'Ai', song:'スーツ de メイド'},
+  nm:'Ai', song:'スーツ de メイド',
+  lyrics:[
+ '（ワン！ツー！スリー！フォー！）',
+ '　',
+ '秋葉原の昼下がり',
+ 'そこのおじさんギャップは好きなん？',
+ '朝から晩まで拘束されて',
+ '昼ごはんは立ち食い蕎麦か？！',
+ '疲れた背中に ストライプ',
+ '見てられないよ 汗染みつけて',
+ 'ため息ひとつ 吐く前に',
+ 'こっちへおいで',
+ 'フリルはどうだい？',
+ '単なるカフェよ にゃんこもいるよ',
+ '癒やしのパラダイスへようこそ！',
+ '　',
+ 'スーツも脱いで 手のなる方へ',
+ '魔法をかけてあげるから',
+ 'お疲れモードの ハートにチャージ',
+ 'ロリータマジックで 世界が変わる！',
+ '（萌え！萌え！きゅん！）',
+ '　',
+ '満員電車に揺られてポチポチ',
+ 'すり減るプライド お疲れ様です',
+ '「オカエリナサイマセ」のひと言で',
+ 'フリーズした脳内 溶かしてあげる',
+ '黒猫だって「ニャー」って甘えるよ',
+ 'ここでは誰もが 主人公なのさ',
+ '肩の荷を下ろして ごちそうさま？',
+ '秘密の楽園、楽しんでいって！',
+ '　',
+ 'スーツも脱いで 手のなる方へ',
+ '魔法をかけてあげるから',
+ 'お疲れモードの ハートにチャージ',
+ 'ロリータマジックで 世界が変わる！',
+ '　',
+ '現実世界（リアル）のしがらみは',
+ 'ドアの外に置いてきて',
+ '童心にかえるその瞬間（とき）',
+ '君の笑顔が見たいんだ……！',
+ '（ハイ！ハイ！ハイ！ハイ！）',
+ '（もっと盛り上がっていこうぜ！）',
+ '　',
+ 'スーツを脱いで 飛び出せ未来へ',
+ '極上の甘さを召し上がれ！',
+ 'お疲れモードの ハートにチャージ',
+ 'ロリータマジックは 終わらない！',
+ '　',
+ 'わたしにもミルクティー奢ってね！',
+ '（約束だよ？）',
+ 'また来てよね、ご主人様！',
+ '（バイバイ！）']},
  {id:'metal', ja:'メタル',      en:'HEAVY METAL',dress:'#141418',hair:2,  metal:1, noPalm:1,
-  nm:'Ririel', song:'世界をぶっ壊せ！'},
+  nm:'Ririel', song:'世界をぶっ壊せ！',
+  lyrics:[
+ '今日もファック、バズーカーな朝、突然やってくるマザー、ノックぐらいしろよな！',
+ 'また「スマホばっか見てないで」って、画面のなかの推しが見えないじゃん。',
+ 'インキャな日常、一瞬でぶち壊すエグい現実。マジだりぃ。',
+ 'お気に入りのソニーのコンデジでエモい世界を切り取っても、',
+ 'トッズのローファーで踏みつけるコンクリートはいつだって冷たい。',
+ '既読スルーの通知にざわつくメンタル、映えなきゃ生きてる価値ないの？',
+ 'みんなの「可愛い」に病んで、本当の自分を見失うナイトメア。',
+ 'でも、こんな世界を生き抜くための狂気（バイブス）が、私のなかで暴れ出す。',
+ '「もう限界！」って叫ぶ声を、激しいディストーションにかき鳴らせ！',
+ '地雷も闇もまとめて全部、私だけのリアルな狂宴（ステージ）に変えてやる。',
+ '正解なんていらない。この拳を突き上げて、世界をぶっ壊せ！']},
  {id:'mermaid',ja:'人魚',       en:'MERMAID',   dress:'#2fd0c0', hair:-1, mermaid:1, noPalm:1,
   nm:'Rora', song:'夕凪の浜'},
  {id:'monkey',ja:'おさるを抱っこ',en:'MONKEY',  dress:'#ffffff', hair:9,  monkey:1,
@@ -427,7 +896,7 @@ var RARE=[
  '目に見えない力学が働き',
  '誰かがそっと導いてくれてる',
  'そう感じる夜もある',
- '小さな点が重なり合って',
+ '小さなことが重なり合って',
  '幾重の輪郭（ライン）が形作られ',
  'いま、この瞬間　ここに生きている',
  'やりたいことは　山ほどあるけど',
@@ -476,11 +945,80 @@ function soloOK(id){return ownCount(id)>=SOLO_NEED;}
 function soloList(){var a=[];for(var i=0;i<RARE.length;i++)if(soloDone[RARE[i].id])a.push(RARE[i].id);return a;}
 function soloLabel(id){var R=rareById(id);return soloName[id]||(R&&R.nm)||(R&&R.ja)||id;}
 function soloSong(id){var R=rareById(id);return (R&&R.song)||'';}
+function hex2rgb(h){                           /* #rrggbb を数に */
+  h=String(h).replace('#','');
+  if(h.length===3)h=h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
+  var n=parseInt(h,16);
+  if(isNaN(n))return [20,20,24];
+  return [(n>>16)&255,(n>>8)&255,n&255];
+}
+function lyricColor(bg){                       /* 暗い背景なら65%明るく、明るい背景なら35%濃く */
+  var c=hex2rgb(bg);
+  var lum=(0.2126*c[0]+0.7152*c[1]+0.0722*c[2])/255;
+  var o=[0,0,0],i;
+  if(lum<0.5){ for(i=0;i<3;i++)o[i]=Math.round(c[i]+(255-c[i])*0.65); }
+  else { for(i=0;i<3;i++)o[i]=Math.round(c[i]*0.65); }
+  return 'rgb('+o[0]+','+o[1]+','+o[2]+')';
+}
 function soloLyrics(id){                       /* 歌詞。行で渡されたらつなげる */
   var R=rareById(id);
   if(!R||!R.lyrics)return '';
   var L=R.lyrics;
   return (typeof L==='string')?L:L.join('　　　');
+}
+var lyWrap={};                                 /* 折り返した結果をとっておく */
+var LY_TAIL='、。，．！？」』）ー〜…・,.!?)]};:—–';   /* 行頭に来ては困る字（英字ぶんも） */
+function wrapOne(txt,maxW){                    /* 1行を画面の幅に折る。フォントは設定済み */
+  if(ctx.measureText(txt).width<=maxW)return [txt];
+  var out=[],cur='',sp=-1,i,ch,br,head,rest;
+  for(i=0;i<txt.length;i++){
+    ch=txt.charAt(i);
+    if(cur.length&&ctx.measureText(cur+ch).width>maxW){
+      if(LY_TAIL.indexOf(ch)>=0&&cur.length>1){
+        /* 句読点が行頭に来ないよう、直前の1字と一緒に次の行へ追い出す */
+        out.push(cur.slice(0,cur.length-1).replace(/\s+$/,''));
+        cur=cur.slice(cur.length-1)+ch;
+        sp=cur.lastIndexOf(' ');
+        continue;
+      }
+      br=(sp>0)?sp:cur.length;
+      rest=cur.slice(br).replace(/^\s+/,'');
+      if(rest.length&&LY_TAIL.indexOf(rest.charAt(0))>=0&&br>1){
+        br--;                                  /* 次の行が句読点で始まるなら1字手前で折る */
+        rest=cur.slice(br).replace(/^\s+/,'');
+      }
+      head=cur.slice(0,br).replace(/\s+$/,'');
+      if(!head.length){head=cur;rest='';}
+      out.push(head);
+      cur=rest+ch;
+      sp=cur.lastIndexOf(' ');
+    }else{
+      cur+=ch;
+      if(ch===' ')sp=cur.length-1;
+    }
+  }
+  if(cur.replace(/\s+/g,'').length)out.push(cur);
+  return out;
+}
+function lyricWrapped(id,maxW){                /* 折り返したあとの行 */
+  var k=id+'|'+Math.round(maxW);
+  if(lyWrap[k])return lyWrap[k];
+  var src=soloLyricLines(id),out=[],i,j,w;
+  for(i=0;i<src.length;i++){
+    w=wrapOne(src[i],maxW);
+    for(j=0;j<w.length;j++)out.push(w[j]);
+  }
+  lyWrap[k]=out;
+  return out;
+}
+function soloLyricLines(id){                   /* 歌詞を行の配列で */
+  var R=rareById(id);
+  if(!R||!R.lyrics)return [];
+  var L=R.lyrics;
+  if(typeof L==='string')L=L.split('\n');
+  var out=[],i;
+  for(i=0;i<L.length;i++)if(String(L[i]).length)out.push(L[i]);
+  return out;
 }
 var RARE_BASE=0.14;                    // レアが出る基本の確率
 function ownedList(){var a=[];for(var i=0;i<RARE.length;i++)if(owned[RARE[i].id])a.push(RARE[i].id);return a;}
@@ -4354,35 +4892,41 @@ function drawIdol(){
     ctx.fillStyle='rgba(255,255,255,0.75)';
     bt(soloId?'SOLO DEBUT!':(idolDemo?'IDOL DEBUT!  TAP TO EXIT':'IDOL DEBUT!'),W/2,oy2+S+70,2,'center',2);
     var lyr=soloId?soloLyrics(soloId):'';
-    if(lyr){                                 /* 歌詞が右から入って左へ抜ける */
-      var lbY=oy2+S+80,lbH=26,cy5=lbY+lbH/2;
+    if(lyr){                                 /* 歌詞が2行の窓の中を下から上へ流れる */
       ctx.save();
-      ctx.beginPath();ctx.rect(0,lbY,W,lbH);ctx.clip();
-      ctx.font='700 16px "Hiragino Kaku Gothic ProN","Yu Gothic","Noto Sans JP",sans-serif';
-      ctx.textAlign='left';ctx.textBaseline='middle';
-      var lw5=0;
-      try{lw5=ctx.measureText(lyr).width;}catch(e){lw5=lyr.length*16;}
+      ctx.font='300 16px "Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic",'+
+               '"Noto Sans JP",sans-serif';
+      var LN=lyricWrapped(soloId,W-2*PAD-10);  // 画面に収まるよう折り返す
+      ctx.restore();
+      var lh5=19,wH5=lh5*2+8;                // 2行ぶんの窓
+      var wT5=oy2+S+80,wB5=wT5+wH5;   // 上の見出しと下のTIPボタンのあいだ
       var RL=rareById(soloId)||{};
       var t05=songT0||idolT;                 // 歌が鳴り出した時刻をゼロ点にする
       var lead5=(RL.lyricLead||0)*1000;      // 歌い出しまでの間
       var tail5=(RL.lyricTail||0)*1000;      // 終わりの余白
       var dur5=(songOn&&songLen)?songLen:idolLen();
       var end5=Math.max(lead5+3000,dur5-tail5);
-      var spd5=(W+lw5)/(end5-lead5);         // 歌い出しで右から入り、終わりで左へ抜ける
-      if(spd5>0.12)spd5=0.12;                // 速すぎは防ぐ
-      var lx5=W-spd5*((now-t05)-lead5);      // 右から入って左へ
-      ctx.fillStyle='rgba(0,0,0,0.60)';
-      ctx.fillText(lyr,lx5+1.5,cy5+1.5);
-      ctx.fillStyle='rgba(255,240,170,0.95)';
-      ctx.fillText(lyr,lx5,cy5);
-      try{                                   /* 両端をふわっと消す */
-        var fg5=ctx.createLinearGradient(0,0,W,0);
-        fg5.addColorStop(0,padCol);
-        fg5.addColorStop(0.08,'rgba(0,0,0,0)');
-        fg5.addColorStop(0.92,'rgba(0,0,0,0)');
-        fg5.addColorStop(1,padCol);
-        ctx.fillStyle=fg5;ctx.fillRect(0,lbY,W,lbH);
-      }catch(e){}
+      var all5=(LN.length+2)*lh5;            // 下から入り、上へ抜けきるまで
+      var spd5=all5/(end5-lead5);
+      if(spd5>0.040)spd5=0.040;              // 速すぎは防ぐ
+      var off5=spd5*((now-t05)-lead5);
+      if(off5<0)off5=0;
+      ctx.save();
+      ctx.beginPath();ctx.rect(0,wT5,W,wH5);ctx.clip();   // 窓の外には出さない
+      ctx.font='300 16px "Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic",'+
+               '"Noto Sans JP",sans-serif';
+      ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillStyle=lyricColor(padCol);      // 背景の色から決めた歌詞の色
+      for(var li=0;li<LN.length;li++){
+        var ly5=wB5+lh5*0.5+li*lh5-off5;
+        if(ly5<wT5-lh5||ly5>wB5+lh5)continue;
+        var fd5=1;                           // 窓の上下でうすくする
+        if(ly5<wT5+lh5*0.5)fd5=Math.max(0,(ly5-(wT5-lh5*0.5))/lh5);
+        else if(ly5>wB5-lh5*0.5)fd5=Math.max(0,((wB5+lh5*0.5)-ly5)/lh5);
+        ctx.globalAlpha=fd5;
+        ctx.fillText(LN[li],W/2,ly5);
+      }
+      ctx.globalAlpha=1;
       ctx.restore();
     }else{
       var note=Math.floor(now/300)%4;
