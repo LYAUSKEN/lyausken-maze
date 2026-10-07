@@ -284,10 +284,10 @@ function drawGetRare(){
   ctx.fillText(R.ja,W/2,H*0.66);
   ctx.fillStyle='rgba(255,255,255,0.75)';
   bt(R.en,W/2,H*0.70,3,'center',2);
-  var cnt=ownCount(R.id),left=SOLO_NEED-cnt;
-  ctx.fillStyle=(cnt>=SOLO_NEED)?'#ffd400':'#ffffff';
+  var cnt=ownCount(R.id),left=soloLeft(R.id);
+  ctx.fillStyle=soloOK(R.id)?'#ffd400':'#ffffff';
   bt('x '+cnt,W/2,H*0.742,4,'center',2);
-  if(cnt>=SOLO_NEED){
+  if(soloOK(R.id)){
     ctx.fillStyle='#ffd400';
     bt(soloDone[R.id]?'SOLO READY':'SOLO DEBUT!',W/2,H*0.775,2,'center',2);
   }else{
@@ -367,7 +367,7 @@ var girl2={state:'none',x:0,y:0,eater:null,eatT:0,face:'s',lock:false,cat:false}
 var hist=[],askLock=false,askT=0,girlPen=0,askWho=1,catMembers=0,catOv=false;
 /* ===== レアなワトナー ===== */
 var RARE=[
- {id:'cat',   ja:'猫のお面',    en:'CAT MASK',  dress:'#ffffff', hair:0,  mask:1, noPalm:1,
+ {id:'cat', need:3,   ja:'猫のお面',    en:'CAT MASK',  dress:'#ffffff', hair:0,  mask:1, noPalm:1,
   nm:'Verra', song:'CORVETTE',
   lyrics:[
  'Woh, woh, who, woh,',
@@ -389,7 +389,7 @@ var RARE=[
  'Why does every little thing have to pass me right by?',
  'I’m just trying to live, drinking my coffee cold',
  'While they’re driving away in a story untold']},
- {id:'bald',  ja:'坊主',        en:'SHAVED',    dress:'#ffffff', hair:-1,
+ {id:'bald', need:3,  ja:'坊主',        en:'SHAVED',    dress:'#ffffff', hair:-1,
   tank:'#cfd2d6', blueFlower:1, shadow:1, eyesShut:1, noPalm:1,
   nm:'Ingrid', song:'森の輝き',
   lyrics:[
@@ -430,9 +430,9 @@ var RARE=[
  'In the sacred',
  'La La La La La La',
  'Lu Lu Lu Lu']},
- {id:'swim',  ja:'水着',        en:'SWIMSUIT',  dress:'#ff5f8d', hair:0,  swim:1, noPalm:1,
+ {id:'swim', need:3,  ja:'水着',        en:'SWIMSUIT',  dress:'#ff5f8d', hair:0,  swim:1, noPalm:1,
   nm:'Rem', song:'時を越えてわかった'},
- {id:'afro',  ja:'アフロ',      en:'AFRO',      dress:'#ffffff', hair:3,
+ {id:'afro', need:3,  ja:'アフロ',      en:'AFRO',      dress:'#ffffff', hair:3,
   skin:'#c98f5e', tri:1, guitar:1, stand:1, noPalm:1,
   nm:'Keala', song:'西郷山の空',
   lyrics:[
@@ -473,7 +473,7 @@ var RARE=[
  'この瞬間（とき）を刻みながら',
  '　',
  '（明るい未来へ……）']},
- {id:'long',  ja:'ロングヘア',  en:'LONG HAIR', dress:'#ffffff', hair:2,
+ {id:'long', need:4,  ja:'ロングヘア',  en:'LONG HAIR', dress:'#ffffff', hair:2,
   hairCol:'#c9a8e8', track:1, sneaker:'#ff79b0', headset:1, sideStart:1, noPalm:1,
   nm:'Sakra', song:'More cake,',
   lyrics:[
@@ -509,7 +509,7 @@ var RARE=[
  '　',
  'More cake, please!',
  'Yes, Mummy, just one more slice!']},
- {id:'skate', ja:'スケボー',    en:'SKATER',    dress:'#b9ecd9', hair:4,  board:1, doit:1, noPalm:1,
+ {id:'skate', need:3, ja:'スケボー',    en:'SKATER',    dress:'#b9ecd9', hair:4,  board:1, doit:1, noPalm:1,
   nm:'Mio', song:'深夜のファミレス',
   lyrics:[
  '大宮駅東口、アルシェの裏抜け',
@@ -547,9 +547,9 @@ var RARE=[
  '終電逃した帰り道、ここが私たちのトーキョー（いや、大宮）',
  'スープバーのコーンポタージュ、底に残るつぶつぶ',
  'あの日からずっと変わらない、このゆるい夜の空気']},
- {id:'kaiju', ja:'怪獣',        en:'KAIJU',     dress:'#4fbf5a', hair:-1, kaiju:1, headset:1, noPalm:1,
+ {id:'kaiju', need:3, ja:'怪獣',        en:'KAIJU',     dress:'#4fbf5a', hair:-1, kaiju:1, headset:1, noPalm:1,
   nm:'Venomilla', song:'EIRTH PULSE'},
- {id:'stripe',ja:'ストライプ',  en:'STRIPES',   dress:'#ffffff', hair:0,  vstripe:1, noPalm:1,
+ {id:'stripe', need:4,ja:'ストライプ',  en:'STRIPES',   dress:'#ffffff', hair:0,  vstripe:1, noPalm:1,
   uneck:1,
   nm:'Hani', song:'長い雨',
   lyrics:[
@@ -588,7 +588,7 @@ var RARE=[
  'あなたの笑顔を　いちばんに見る',
  '　',
  '雨の向こうで　あなたを待つわ']},
- {id:'witch', ja:'魔女',        en:'WITCH',     dress:'#15151c', hair:0,  hat:1,
+ {id:'witch', need:3, ja:'魔女',        en:'WITCH',     dress:'#15151c', hair:0,  hat:1,
   pom:1, redTee:1, knee:1, hang:1, wand:1, noPalm:1,
   nm:'Sarry', song:'恋する魔女の放物線',
   lyrics:[
@@ -638,7 +638,7 @@ var RARE=[
  '　',
  '「……なんてね。',
  '来週も、お弁当作るからさ！」']},
- {id:'afro2', ja:'横縞お団子',  en:'STRIPED BUN',dress:'#ffffff', hair:5,  hstripe:1,
+ {id:'afro2', need:5, ja:'横縞お団子',  en:'STRIPED BUN',dress:'#ffffff', hair:5,  hstripe:1,
   sit:1, noHold:1, hang:1, piano:1, still:1, offX:-0.32, bodySide:1, seat:1,
   slowMouth:1, eyesLoop:1,
   nm:'Satomi', song:'カメリアのように',
@@ -668,7 +668,7 @@ var RARE=[
  '始まりは　いつ来るのかしら',
  '渡り鳥は　知っているの？',
  'まだ見ぬ春を待つ　カメリアのように']},
- {id:'flower',ja:'花柄',        en:'FLORAL',    dress:'#fff3e0', hair:0,  flower:1, noPalm:1,
+ {id:'flower', need:3,ja:'花柄',        en:'FLORAL',    dress:'#fff3e0', hair:0,  flower:1, noPalm:1,
   nm:'Ann', song:'エサヌカ線の果て',
   lyrics:[
  '小麦色に焼けた肌に',
@@ -708,7 +708,7 @@ var RARE=[
  '君の背中の温もりは忘れない',
  'エサヌカ線の果てに見えた',
  'あの青空を、ずっと。']},
- {id:'crow',  ja:'カラス',      en:'CROW',      dress:'#ffffff', hair:6,  crow:1,
+ {id:'crow', need:5,  ja:'カラス',      en:'CROW',      dress:'#ffffff', hair:6,  crow:1,
   jeans:1, sleeve:'#ffffff', stand:1, noHold:1, guitar:1, guitarCol:'#c0392b', sit:1, noPalm:1,
   nm:'Shumari', song:'煌めくこの世界',
   lyrics:[
@@ -741,7 +741,7 @@ var RARE=[
  '息を吸うたび、胸の奥が青く染まってゆく',
  'この森の物語は、ただ、そこにある',
  '永遠の、目覚めの歌']},
- {id:'wolf',  ja:'狼',          en:'WOLF',      dress:'#9aa0a8', hair:-1, wolf:1, noPalm:1,
+ {id:'wolf', need:5,  ja:'狼',          en:'WOLF',      dress:'#9aa0a8', hair:-1, wolf:1, noPalm:1,
   nm:'Miyu', song:'THE WOLF',
   lyrics:[
  '(Ha, ha, ha, ha, ha...)',
@@ -786,7 +786,7 @@ var RARE=[
  'I\'m the Wolf.',
  '(Ha, ha, ha, ha, ha...)',
  'Peace out.']},
- {id:'dots',  ja:'水玉',        en:'POLKA DOT', dress:'#ffffff', hair:8,  dots:1,
+ {id:'dots', need:6,  ja:'水玉',        en:'POLKA DOT', dress:'#ffffff', hair:8,  dots:1,
   sweat:1, dotCol:'#d8dadd', headset:1, still:1, hairCol:'#c9a8e8',
   armsStill:1, walk:1, skin:'#eef1f7', eyeCol:'#2f7fd0', longBang:1, noPalm:1,
   nm:'M4', song:'POLKA DOTS',
@@ -811,7 +811,7 @@ var RARE=[
  'A single heartbeat',
  'Is echoing through the infinite.',
  'fourteen dots, fifteen dots, sixteen dots, seventeen dots, eighteen dots, nineteen dots, twenty dots….']},
- {id:'lolita',ja:'ロリータ',    en:'LOLITA',    dress:'#f06fa8', hair:1,  frill:1, noPalm:1,
+ {id:'lolita', need:4,ja:'ロリータ',    en:'LOLITA',    dress:'#f06fa8', hair:1,  frill:1, noPalm:1,
   noTailBox:1,
   nm:'Ai', song:'スーツ de メイド',
   lyrics:[
@@ -865,7 +865,7 @@ var RARE=[
  '（約束だよ？）',
  'また来てよね、ご主人様！',
  '（バイバイ！）']},
- {id:'metal', ja:'メタル',      en:'HEAVY METAL',dress:'#141418',hair:2,  metal:1, noPalm:1,
+ {id:'metal', need:5, ja:'メタル',      en:'HEAVY METAL',dress:'#141418',hair:2,  metal:1, noPalm:1,
   nm:'Ririel', song:'世界をぶっ壊せ！',
   lyrics:[
  '今日もファック、バズーカーな朝、突然やってくるマザー、ノックぐらいしろよな！',
@@ -879,9 +879,9 @@ var RARE=[
  '「もう限界！」って叫ぶ声を、激しいディストーションにかき鳴らせ！',
  '地雷も闇もまとめて全部、私だけのリアルな狂宴（ステージ）に変えてやる。',
  '正解なんていらない。この拳を突き上げて、世界をぶっ壊せ！']},
- {id:'mermaid',ja:'人魚',       en:'MERMAID',   dress:'#2fd0c0', hair:-1, mermaid:1, noPalm:1,
+ {id:'mermaid', need:4,ja:'人魚',       en:'MERMAID',   dress:'#2fd0c0', hair:-1, mermaid:1, noPalm:1,
   nm:'Rora', song:'夕凪の浜'},
- {id:'monkey',ja:'おさるを抱っこ',en:'MONKEY',  dress:'#ffffff', hair:9,  monkey:1,
+ {id:'monkey', need:4,ja:'おさるを抱っこ',en:'MONKEY',  dress:'#ffffff', hair:9,  monkey:1,
   hairCol:'#2b1a0e', chem:1, bandana:1, skin:'#a9784c', noPalm:1,
   nm:'Janis', song:'人生って何だ？',
   lyrics:[
@@ -941,7 +941,9 @@ var slowMouthOv=0;                       // 口の動きをゆっくりに
 var owned={},team=[],tipCoins=0,tipBoost=0;
 var soloName={},soloDone={},liveMode='group',soloId=null,SOLO_NEED=3;
 function ownCount(id){return owned[id]||0;}
-function soloOK(id){return ownCount(id)>=SOLO_NEED;}
+function soloNeed(id){var R=rareById(id);return (R&&R.need)||SOLO_NEED;}
+function soloLeft(id){return Math.max(0,soloNeed(id)-ownCount(id));}
+function soloOK(id){return ownCount(id)>=soloNeed(id);}
 function soloList(){var a=[];for(var i=0;i<RARE.length;i++)if(soloDone[RARE[i].id])a.push(RARE[i].id);return a;}
 function soloLabel(id){var R=rareById(id);return soloName[id]||(R&&R.nm)||(R&&R.ja)||id;}
 function soloSong(id){var R=rareById(id);return (R&&R.song)||'';}
@@ -2249,7 +2251,7 @@ function endFieldLive(){
   /* ソロは去っていく */
   var gone=soloId;
   delete soloDone[gone];delete soloName[gone];
-  owned[gone]=Math.max(0,(owned[gone]||0)-SOLO_NEED);
+  owned[gone]=Math.max(0,(owned[gone]||0)-soloNeed(gone));
   if(!owned[gone])delete owned[gone];
   var at=team.indexOf(gone);if(at>=0)team.splice(at,1);
   if(liveMode===gone)liveMode=soloList().length?soloList()[0]:'group';
@@ -2828,6 +2830,15 @@ function endOpening(){
   state='ready';readyT=now;
   bellSfx();
 }
+function endDemo(){                             /* 確認ライブのあと、元の画面へ */
+  if(demoFrom==='dex'){
+    demoFrom='title';
+    if(nameEl){nameEl.style.display='none';renameId=null;}
+    state='dex';setPalette(true);layout();placeNameInput();
+    return;
+  }
+  toTitle();
+}
 function toTitle(){
   if(nameEl){nameEl.style.display='none';renameId=null;}
   if(lives<=0)clearSave();
@@ -2944,7 +2955,7 @@ function updateIdol(){
     setTimeout(function(){beep(2093,0.22,0.05,'triangle');},180);
   }
   if(heartGot&&now-heartGot>=1200){
-    if(idolDemo){idolDemo=false;soloId=null;musicStop();toTitle();}
+    if(idolDemo){idolDemo=false;soloId=null;musicStop();endDemo();}
     else if(soloId&&pendIdol){pendIdol=false;soloId=null;startIdol(false,idolNext);}
     else {soloId=null;clearStage();}
   }
@@ -5464,7 +5475,7 @@ function tap(x,y){
     if(inBox(demoBtn(),x,y,8)){
       beep(880,0.08,0.05,'triangle');
       var pick=demoNext();demoIdx++;            // 押すたびに順番に切り替わる
-      startIdol(true,IDOL_N,pick);
+      demoFrom='title';startIdol(true,IDOL_N,pick);
       placeNameInput();return;
     }
     if(ownedList().length>=1&&inBox(dexBtn(),x,y,8)){
@@ -5488,7 +5499,7 @@ function tap(x,y){
   if(state==='idol'){
     if(x!==undefined&&idolT&&!heartT&&inBox(skipBtn(),x,y,8)){skipLive();return;}
     if(x!==undefined&&idolT&&!heartT&&inBox(tipBtn(),x,y,8)){throwTip();return;}
-    if(idolDemo&&x!==undefined){musicStop();idolDemo=false;soloId=null;beep(400,0.08,0.045,'triangle');toTitle();}
+    if(idolDemo&&x!==undefined){musicStop();idolDemo=false;soloId=null;beep(400,0.08,0.045,'triangle');endDemo();}
     return;
   }
   if(state==='dex'){
@@ -5507,6 +5518,13 @@ function tap(x,y){
       var rc=renameChip(ri);
       if(x>=rc.x&&x<=rc.x+rc.w&&y>=rc.y&&y<=rc.y+rc.h){
         beep(760,0.07,0.045,'triangle');startRename(RARE[ri].id);return;
+      }
+      var lc=liveChip(ri);                       /* もう一度ソロライブ */
+      if(x>=lc.x&&x<=lc.x+lc.w&&y>=lc.y&&y<=lc.y+lc.h){
+        beep(920,0.08,0.05,'triangle');
+        demoFrom='dex';saveDex();
+        startIdol(true,IDOL_N,RARE[ri].id);
+        placeNameInput();return;
       }
     }
     if(ownedList().length<7)return;              // 7人そろうまでは閲覧のみ
@@ -5705,7 +5723,7 @@ function update(){
         if(gr.state==='follow'&&gr.rare){
           getList.push({id:gr.rare,fresh:!owned[gr.rare]});
           owned[gr.rare]=(owned[gr.rare]||0)+1;
-          if(owned[gr.rare]>=SOLO_NEED&&!soloDone[gr.rare]){
+          if(owned[gr.rare]>=soloNeed(gr.rare)&&!soloDone[gr.rare]){
             soloDone[gr.rare]=1;pendSolo=gr.rare;     // ソロデビュー
             if(liveMode==='group')liveMode=gr.rare;
           }
@@ -8510,7 +8528,7 @@ function helpIcon(kind,x,y,S){
 }
 /* ===== ワトナー図鑑（NEW WATONERSの編成） ===== */
 var dexScroll=0,dexDragY=null,dexMax=0,renameId=null,nameEl=null;
-var demoIdx=0;
+var demoIdx=0,demoFrom='title';
 function demoOrder(){                           /* 専用曲のある子を先に */
   var pri=[],rest=[],i,id;                      /* 並びは起動時に決まり、途中で変わらない */
   for(i=0;i<RARE.length;i++){
@@ -8522,6 +8540,7 @@ function demoOrder(){                           /* 専用曲のある子を先�
 function demoNext(){var o=demoOrder();return o[demoIdx%o.length];}
 function modeBtn(){var w=W*0.62,h=Math.max(26,H*0.038);return {x:(W-w)/2,y:70,w:w,h:h};}
 function renameChip(i){var b=dexCell(i);return {x:b.x+b.w-54,y:b.y+b.h-26,w:46,h:20};}
+function liveChip(i){var b=dexCell(i);return {x:b.x+b.w-54,y:b.y+b.h-50,w:46,h:20};}
 function startRename(id){
   renameId=id;
   if(!nameEl){
@@ -8583,6 +8602,12 @@ function drawDex(){
     ctx.fillStyle=on?'rgba(255,138,192,0.18)':(has?'rgba(255,255,255,0.06)':'rgba(255,255,255,0.03)');ctx.fill();
     ctx.strokeStyle=on?'#ff8ac0':(has?'rgba(255,255,255,0.25)':'rgba(255,255,255,0.10)');
     ctx.lineWidth=on?2:1;ctx.stroke();
+    if(!has){                                  /* 未入手でも必要人数は見せる */
+      ctx.fillStyle='rgba(255,255,255,0.30)';
+      ctx.font='400 11px "Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif';
+      ctx.textAlign='center';ctx.textBaseline='alphabetic';
+      ctx.fillText('SOLO まで '+soloNeed(R.id)+'人',b.x+b.w/2,b.y+b.h*0.62);
+    }
     if(has){
       rareOv=R;
       drawGirl(b.x+b.w*0.26,b.y+b.h*0.62,b.h*0.62,1,'s');
@@ -8594,8 +8619,27 @@ function drawDex(){
       ctx.fillStyle='rgba(255,255,255,0.6)';
       bt(R.en,b.x+b.w*0.46,b.y+b.h*0.56,1,'left',1);
       ctx.fillStyle=soloOK(R.id)?'#ffd400':'rgba(255,255,255,0.45)';
-      bt('x'+ownCount(R.id)+(soloOK(R.id)?'  SOLO':''),b.x+b.w*0.46,b.y+b.h*0.72,1,'left',1);
+      bt('x'+ownCount(R.id)+' / '+soloNeed(R.id),b.x+b.w*0.46,b.y+b.h*0.72,1,'left',1);
+      if(soloDone[R.id]){                        /* デビュー済み */
+        ctx.fillStyle='#ffd400';
+        bt('SOLO',b.x+b.w*0.46+btWidth('x'+ownCount(R.id)+' / '+soloNeed(R.id),1,1)+8,
+           b.y+b.h*0.72,1,'left',1);
+      }else{                                     /* あと何人 */
+        var lf=soloLeft(R.id);
+        ctx.fillStyle=(lf<=1)?'rgba(255,212,0,0.85)':'rgba(255,255,255,0.55)';
+        ctx.font='400 11px "Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif';
+        ctx.textAlign='left';ctx.textBaseline='alphabetic';
+        ctx.fillText('あと'+lf+'人',
+          b.x+b.w*0.46+btWidth('x'+ownCount(R.id)+' / '+soloNeed(R.id),1,1)+8,
+          b.y+b.h*0.72+1);
+      }
       if(soloDone[R.id]){
+        var lvb=liveChip(i);                     /* もう一度ソロを見る */
+        rrect(lvb.x,lvb.y,lvb.w,lvb.h,lvb.h*0.45);
+        ctx.fillStyle='rgba(80,240,255,0.16)';ctx.fill();
+        ctx.strokeStyle='rgba(80,240,255,0.85)';ctx.lineWidth=1;ctx.stroke();
+        ctx.fillStyle='#50f0ff';
+        bt('LIVE',lvb.x+lvb.w/2,lvb.y+lvb.h/2+4,1,'center',1);
         var rb=renameChip(i);
         rrect(rb.x,rb.y,rb.w,rb.h,rb.h*0.45);
         ctx.fillStyle='rgba(255,212,0,0.16)';ctx.fill();
