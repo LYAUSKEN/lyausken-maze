@@ -78,6 +78,12 @@ var COIN_BASE=2;         // COIN_FROM での枚数
 var COIN_MAX=10;         // 金貨の最大枚数
 var PICK_COST_COIN=3;    // ツルハシ1本の値段（コイン）
 var BOMB_COST_COIN=6;    // 爆弾1個の値段（コイン）
+var MERCH_FROM=25;       // このステージ以降、商人が迷宮を歩き回る
+var MERCH_PICK=PICK_COST_COIN-1;  // 商人のツルハシ（1枚安い）
+var MERCH_BOMB=BOMB_COST_COIN-1;  // 商人の爆弾（1枚安い）
+var MERCH_LURE=3;        // 商人のヤツハシ1個の値段（コイン）
+var MERCH_SPD=0.62;      // 商人が歩く速さ（マス/秒）
+var MERCH_C='#7fe0c8';   // 商人の色
 var OPEN_MS=7000;        // オープニング曲の長さ(ms)
 var LIVES=3;             // 1ゲームで使えるLIFEの数（面をまたいで共通）
 var BOMB_FROM=5;         // このステージ以降、爆弾が1つ置かれる
@@ -333,6 +339,7 @@ var dots=[],pc={r:0,c:0},dir=null,prog=0,held=null,px=0,py=0;
 var amoeba=0,amoebaOn=false,amoebaT=0,lastEaten=-1;
 var blockers=[];
 var lures=[],lureStock=LURE_MAX,lurePressed=false;
+var merch=null,merchLock=false,tradeGet=null,tradeGive=null;
 var picks=PICK_MAX,aiming=false,pickPressed=false,dirPressed=false,breakFx=[];
 var gates=[],warpT=-9999,warpFx=[],coins=[],openT=0,warpHold=null;
 var bomb=null,hasBomb=false,fuse=null,respawnAt=0,boomFx=[],bombPressed=false;
@@ -2699,6 +2706,130 @@ function blockerOpen(b){
   return 0;
 }
 
+/* ================= 商人 ================= */
+function placeMerchant(){
+  merch=null;merchLock=false;tradeGet=null;tradeGive=null;
+  if(stage<MERCH_FROM)return;
+  var d=bfs(start.r,start.c),cand=[],r,c;
+  for(r=0;r<ROWS;r++)for(c=0;c<COLS;c++){
+    if(d[r][c]<4)continue;                       /* スタートの近くには立たない */
+    if(isUsed(r,c))continue;
+    cand.push({r:r,c:c});
+  }
+  if(!cand.length)return;
+  var p=cand[(Math.random()*cand.length)|0];
+  var pool=[],i;
+  for(i=0;i<RARE.length;i++)pool.push(RARE[i].id);
+  shuffle(pool);
+  var n=1+((Math.random()<0.5)?1:0);             /* 連れているのは1人か2人 */
+  merch={r:p.r,c:p.c,wdir:null,prog:0,ph:Math.random()*9000,stock:pool.slice(0,n)};
+  markUsed(p.r,p.c);
+  pickMerchDir();
+}
+function pickMerchDir(){
+  if(!merch)return;
+  var opts=[],back=merch.wdir?OPP[merch.wdir]:null,k;
+  for(k in DIRS) if(open({r:merch.r,c:merch.c},k)&&k!==back) opts.push(k);
+  if(!opts.length) for(k in DIRS) if(open({r:merch.r,c:merch.c},k)) opts.push(k);
+  merch.wdir=opts.length?opts[(Math.random()*opts.length)|0]:null;
+}
+function merchPos(){
+  if(!merch)return null;
+  var a=ctr(merch.r,merch.c);
+  if(!merch.wdir)return a;
+  var n=nb({r:merch.r,c:merch.c},merch.wdir),q=ctr(n.r,n.c);
+  return {x:a.x+(q.x-a.x)*merch.prog,y:a.y+(q.y-a.y)*merch.prog};
+}
+function updateMerchant(){
+  if(!merch)return;
+  if(!merch.wdir||!open({r:merch.r,c:merch.c},merch.wdir)){merch.prog=0;pickMerchDir();}
+  if(!merch.wdir)return;
+  merch.prog+=MERCH_SPD*(dt/1000);
+  var g=0;
+  while(merch.prog>=1&&g++<20){                  /* 角まで来たら曲がる */
+    var nx=nb({r:merch.r,c:merch.c},merch.wdir);
+    merch.r=nx.r;merch.c=nx.c;merch.prog-=1;pickMerchDir();
+    if(!merch.wdir){merch.prog=0;break;}
+  }
+  var mp=merchPos(),dm=Math.hypot(px-mp.x,py-mp.y);
+  if(dm>cell*0.95)merchLock=false;
+  if(!merchLock&&dm<cell*0.44)openMerch();        /* 商人のほうから声をかける */
+}
+function openMerch(){
+  if(state!=='playing'||!merch)return;
+  state='merch';askT=now;held=null;merchLock=true;
+  tradeGet=null;tradeGive=null;
+  beep(520,0.09,0.05,'triangle');
+  setTimeout(function(){beep(784,0.14,0.05,'triangle');},90);
+}
+function merchPrice(kind){
+  return kind==='pick'?MERCH_PICK:(kind==='bomb'?MERCH_BOMB:MERCH_LURE);
+}
+function merchCan(kind){
+  if(kind==='bomb'&&hasBomb)return false;        /* 爆弾は1つだけ持てる */
+  return wallet>=merchPrice(kind);
+}
+function merchBuy(kind){
+  if(!merchCan(kind)){beep(140,0.1,0.04,'square');return;}
+  wallet-=merchPrice(kind);
+  if(kind==='pick')picks++;
+  else if(kind==='bomb')hasBomb=true;
+  else lureStock++;
+  beep(880,0.09,0.05,'triangle');
+  setTimeout(function(){beep(1320,0.16,0.05,'triangle');},90);
+}
+function doTrade(){
+  if(!merch||!tradeGet||!tradeGive)return;
+  owned[tradeGive]=Math.max(0,(owned[tradeGive]||0)-1);
+  if(!owned[tradeGive]){                         /* 最後の1人なら手ばなす */
+    delete owned[tradeGive];
+    var at=team.indexOf(tradeGive);if(at>=0)team.splice(at,1);
+  }
+  owned[tradeGet]=(owned[tradeGet]||0)+1;
+  if(team.length<7&&team.indexOf(tradeGet)<0)team.push(tradeGet);
+  if(owned[tradeGet]>=soloNeed(tradeGet)&&!soloDone[tradeGet]){
+    soloDone[tradeGet]=1;                        /* 人数がそろったらソロデビュー */
+    if(liveMode==='group')liveMode=tradeGet;
+  }
+  var k=merch.stock.indexOf(tradeGet);
+  if(k>=0)merch.stock.splice(k,1);               /* 交換は一人につき一人 */
+  saveDex();
+  var mp=merchPos(),R=rareById(tradeGet);
+  if(mp&&R)pop(mp.x,mp.y-cell*0.9,R.en,MERCH_C);
+  beep(1046,0.08,0.05,'triangle');
+  setTimeout(function(){beep(1318,0.08,0.05,'triangle');},90);
+  setTimeout(function(){beep(1760,0.18,0.05,'triangle');},180);
+}
+function merchBtns(){
+  var w=W*0.70,h=Math.max(30,H*0.050),x=(W-w)/2,y=H*0.205,g=9;
+  var o={pick:{x:x,y:y,w:w,h:h},
+         lure:{x:x,y:y+h+g,w:w,h:h},
+         bomb:{x:x,y:y+(h+g)*2,w:w,h:h},
+         cards:[],
+         cancel:{x:W*0.5-W*0.19,y:H*0.885,w:W*0.38,h:Math.max(28,H*0.044)}};
+  var n=(merch&&merch.stock)?merch.stock.length:0;
+  var cw=W*0.32,ch=cw*1.20,cy=y+(h+g)*3+H*0.105;
+  var tot=n*cw+(n-1)*14,x0=(W-tot)/2;
+  for(var i=0;i<n;i++)o.cards.push({x:x0+i*(cw+14),y:cy,w:cw,h:ch});
+  return o;
+}
+function giveBtns(){
+  var ow=ownedList(),n=ow.length,cols=3,g=10;
+  var cw=(W*0.88-(cols-1)*g)/cols,ch=cw*1.14;
+  var rows=Math.max(1,Math.ceil(n/cols)),y0=H*0.215,maxH=H*0.655;
+  if(rows*(ch+g)>maxH)ch=Math.max(42,maxH/rows-g);
+  var a=[],x0=(W-(cols*cw+(cols-1)*g))/2;
+  for(var i=0;i<n;i++){
+    var r=(i/cols)|0,c=i%cols;
+    a.push({x:x0+c*(cw+g),y:y0+r*(ch+g),w:cw,h:ch,id:ow[i]});
+  }
+  return {cards:a,cancel:{x:W*0.5-W*0.19,y:H*0.905,w:W*0.38,h:Math.max(26,H*0.040)}};
+}
+function tradeBtns(){
+  var w=W*0.30,h=Math.max(34,H*0.056),y=H*0.72;
+  return {yes:{x:W*0.5-w-8,y:y,w:w,h:h},no:{x:W*0.5+8,y:y,w:w,h:h}};
+}
+
 /* ============ ワープの穴 ============ */
 function placeWarps(){
   gates=[];warpT=-9999;warpFx=[];
@@ -2936,6 +3067,7 @@ function newStage(){
   placeCoins();
   placeBomb();
   placeHoles();
+  placeMerchant();
   hist=[];girlPen=0;face='s';
   pc={r:start.r,c:start.c};dir=null;prog=0;held=null;
   var s=ctr(pc.r,pc.c);px=s.x;py=s.y;
@@ -5304,6 +5436,11 @@ function sync(){
   }
   if(!(pc.r===jail.r&&pc.c===jail.c))girl.lock=false;
   if(jail2&&!(pc.r===jail2.r&&pc.c===jail2.c))girl2.lock=false;
+  if(merch){                                   /* 商人に出会うと店が開く */
+    var mp0=merchPos(),dm0=Math.hypot(px-mp0.x,py-mp0.y);
+    if(dm0>cell*0.95)merchLock=false;
+    if(!merchLock&&dm0<cell*0.44){openMerch();return;}
+  }
   eraseDots();addDots();
   // 追跡アメーバ
   if(amoebaOn){
@@ -5711,6 +5848,38 @@ function tap(x,y){
     else if(inBox(sh.bomb,x,y,8)&&canBuy('bomb')){doBuy('bomb');resumeFromAsk();}
     else if(inBox(sh.cancel,x,y,8)){beep(240,0.08,0.04,'square');resumeFromAsk();}
   }
+  else if(state==='merch'){
+    if(x===undefined)return;
+    var mb=merchBtns(),mi;
+    if(inBox(mb.pick,x,y,8)){merchBuy('pick');return;}
+    if(inBox(mb.lure,x,y,8)){merchBuy('lure');return;}
+    if(inBox(mb.bomb,x,y,8)){merchBuy('bomb');return;}
+    for(mi=0;mi<mb.cards.length;mi++){
+      if(inBox(mb.cards[mi],x,y,6)){
+        if(!ownedList().length){beep(140,0.1,0.04,'square');return;}
+        tradeGet=merch.stock[mi];tradeGive=null;state='give';
+        beep(700,0.08,0.05,'triangle');return;
+      }
+    }
+    if(inBox(mb.cancel,x,y,8)){beep(240,0.08,0.04,'square');resumeFromAsk();}
+  }
+  else if(state==='give'){
+    if(x===undefined)return;
+    var gb=giveBtns(),gi;
+    for(gi=0;gi<gb.cards.length;gi++){
+      if(inBox(gb.cards[gi],x,y,6)){
+        tradeGive=gb.cards[gi].id;state='tradeok';
+        beep(760,0.08,0.05,'triangle');return;
+      }
+    }
+    if(inBox(gb.cancel,x,y,8)){beep(240,0.08,0.04,'square');tradeGet=null;state='merch';}
+  }
+  else if(state==='tradeok'){
+    if(x===undefined)return;
+    var tb=tradeBtns();
+    if(inBox(tb.yes,x,y,8)){doTrade();tradeGet=null;tradeGive=null;state='merch';}
+    else if(inBox(tb.no,x,y,8)){beep(240,0.08,0.04,'square');tradeGive=null;state='give';}
+  }
   else if(state==='ask'){
     var ab=askBtns();
     if(x===undefined)return;
@@ -5933,6 +6102,7 @@ function update(){
     }
     checkHoles();
     updateBlockers();
+    updateMerchant();
     if(amoebaOn){
       var sp=amoebaSpeed();
       if(aMode==='trail'){
@@ -6794,6 +6964,73 @@ function drawLures(){
     ctx.fillStyle=rgba(PNK,0.16);ctx.fill();
     blob(p.x,p.y,cell*0.19*k,now*0.6+i*900,rgba(PNK,0.9),rgba(PNK_L,0.95));
   }
+}
+function drawMerchFig(x,y,S){
+  /* 旅の商人：つばの広い帽子、マント、背中の大きな袋 */
+  var R=S*0.5;
+  ctx.save();
+  /* 背中の袋 */
+  ctx.beginPath();ctx.arc(x+R*0.78,y+R*0.10,R*0.42,0,6.2832);
+  ctx.fillStyle='#9a7446';ctx.fill();
+  ctx.strokeStyle='rgba(0,0,0,0.40)';ctx.lineWidth=Math.max(0.8,R*0.07);ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(x+R*0.78,y-R*0.30);ctx.lineTo(x+R*0.62,y-R*0.52);
+  ctx.moveTo(x+R*0.78,y-R*0.30);ctx.lineTo(x+R*0.96,y-R*0.52);
+  ctx.strokeStyle='#c9a46a';ctx.lineWidth=Math.max(0.8,R*0.09);ctx.stroke();
+  /* マント */
+  ctx.beginPath();
+  ctx.moveTo(x,y-R*0.70);
+  ctx.quadraticCurveTo(x+R*0.92,y-R*0.05,x+R*0.72,y+R*0.76);
+  ctx.lineTo(x-R*0.72,y+R*0.76);
+  ctx.quadraticCurveTo(x-R*0.92,y-R*0.05,x,y-R*0.70);
+  ctx.closePath();
+  ctx.fillStyle='#2b3550';ctx.fill();
+  ctx.strokeStyle=MERCH_C;ctx.lineWidth=Math.max(1,R*0.10);ctx.stroke();
+  /* すその波 */
+  ctx.beginPath();
+  ctx.moveTo(x-R*0.72,y+R*0.76);
+  ctx.quadraticCurveTo(x-R*0.36,y+R*0.60,x,y+R*0.76);
+  ctx.quadraticCurveTo(x+R*0.36,y+R*0.60,x+R*0.72,y+R*0.76);
+  ctx.strokeStyle='rgba(255,255,255,0.22)';ctx.lineWidth=Math.max(0.8,R*0.07);ctx.stroke();
+  /* 顔の影 */
+  ctx.beginPath();ctx.arc(x,y-R*0.56,R*0.36,0,6.2832);
+  ctx.fillStyle='#171d2e';ctx.fill();
+  /* 目 */
+  ctx.fillStyle=MERCH_C;
+  ctx.beginPath();ctx.arc(x-R*0.14,y-R*0.56,R*0.075,0,6.2832);ctx.fill();
+  ctx.beginPath();ctx.arc(x+R*0.14,y-R*0.56,R*0.075,0,6.2832);ctx.fill();
+  /* つばの広い帽子 */
+  ctx.beginPath();
+  ctx.moveTo(x-R*1.04,y-R*0.80);
+  ctx.quadraticCurveTo(x,y-R*0.62,x+R*1.04,y-R*0.80);
+  ctx.quadraticCurveTo(x,y-R*1.06,x-R*1.04,y-R*0.80);
+  ctx.closePath();
+  ctx.fillStyle='#1b2234';ctx.fill();
+  ctx.strokeStyle='rgba(255,255,255,0.28)';ctx.lineWidth=Math.max(0.8,R*0.06);ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(x-R*0.40,y-R*0.88);
+  ctx.quadraticCurveTo(x,y-R*1.52,x+R*0.40,y-R*0.88);
+  ctx.closePath();
+  ctx.fillStyle='#232c42';ctx.fill();
+  ctx.strokeStyle='rgba(255,255,255,0.28)';ctx.lineWidth=Math.max(0.8,R*0.06);ctx.stroke();
+  ctx.restore();
+}
+function drawMerch(){
+  if(!merch)return;
+  var p=merchPos();
+  if(!p)return;
+  var bob=Math.sin((now+merch.ph)*0.0042)*cell*0.05;
+  drawMerchFig(p.x,p.y+bob,cell*0.86);
+  /* 頭の上で回る金貨（店のしるし） */
+  var S=cell*0.86,R=S*0.5;
+  var ph=(now+merch.ph)*0.004,sx=Math.abs(Math.cos(ph));
+  ctx.save();
+  ctx.translate(p.x,p.y+bob-R*1.78);
+  ctx.scale(Math.max(0.12,sx),1);
+  ctx.beginPath();ctx.arc(0,0,R*0.26,0,6.2832);
+  ctx.fillStyle='#f2b705';ctx.fill();
+  ctx.strokeStyle='#ffe27a';ctx.lineWidth=1.2;ctx.stroke();
+  ctx.restore();
 }
 function drawBlockers(){
   for(var i=0;i<blockers.length;i++){
@@ -8176,6 +8413,122 @@ function bubble(x,y,txt,col){
   ctx.beginPath();ctx.moveTo(x-5,by+h-1);ctx.lineTo(x,by+h+8);ctx.lineTo(x+5,by+h-1);ctx.stroke();
   pixelText(txt,bx+w/2,by+(h-th)/2,sc,'center','#111111',1);
 }
+function jtx(txt,x,y,size,align,col,wt){
+  /* 日本語まじりの一行 */
+  ctx.save();
+  ctx.font=(wt||'600')+' '+size+'px "Hiragino Sans","Hiragino Kaku Gothic ProN",'+
+           '"Yu Gothic","Noto Sans JP",sans-serif';
+  ctx.textAlign=align||'center';ctx.textBaseline='alphabetic';
+  ctx.fillStyle=col||'#ffffff';
+  ctx.fillText(txt,x,y);
+  ctx.restore();
+}
+function drawRareCard(b,id,sel,cnt){
+  var R=rareById(id);
+  if(!R)return;
+  rrect(b.x,b.y,b.w,b.h,10);
+  ctx.fillStyle='rgba(44,46,62,0.96)';ctx.fill();
+  ctx.strokeStyle=sel?'#ffd400':'rgba(255,255,255,0.32)';
+  ctx.lineWidth=sel?2.4:1.4;ctx.stroke();
+  rareOv=R;
+  drawGirl(b.x+b.w*0.5,b.y+b.h*0.50,b.h*0.52,1,'s');
+  rareOv=null;
+  var fs=Math.max(8,Math.min(11,b.w*0.105));
+  jtx(R.en,b.x+b.w*0.5,b.y+b.h-fs-5,fs,'center','rgba(255,255,255,0.72)');
+  jtx(soloLabel(id),b.x+b.w*0.5,b.y+b.h-5,fs+1,'center','#ffffff');
+  if(cnt>1){
+    jtx('x'+cnt,b.x+b.w-7,b.y+13,10,'right','#ffd400');
+  }
+}
+function drawMerchScreen(){
+  ctx.fillStyle='rgba(0,0,0,0.90)';ctx.fillRect(0,0,W,H);
+  if(state==='merch'){
+    var mb=merchBtns();
+    drawMerchFig(W*0.5,H*0.072,Math.max(34,H*0.072));
+    ctx.fillStyle=MERCH_C;
+    bt('MERCHANT',W/2,H*0.125,3,'center',2);
+    jtx('旅の商人',W/2,H*0.152,12,'center','rgba(255,255,255,0.62)');
+    ctx.fillStyle='#f2b705';
+    bt('COIN '+wallet,W/2,H*0.185,2,'center',2);
+    [['pick','PICKAXE',PICK_C,picks],
+     ['lure','82HASHI',LURE_C,lureStock],
+     ['bomb','M-BOMB',BOMB_C,(hasBomb?1:0)]].forEach(function(o){
+      var b=mb[o[0]],ok=merchCan(o[0]);
+      ctx.globalAlpha=ok?1:0.34;
+      rrect(b.x,b.y,b.w,b.h,b.h*0.42);
+      ctx.fillStyle='rgba(59,59,75,0.95)';ctx.fill();
+      ctx.strokeStyle=o[2];ctx.lineWidth=1.6;ctx.stroke();
+      ctx.fillStyle='#ffffff';
+      bt(o[1],b.x+13,b.y+b.h/2+7,2,'left',1);
+      jtx('('+o[3]+')',b.x+13+btWidth(o[1],2,1)+9,b.y+b.h/2+6,11,'left','rgba(255,255,255,0.45)');
+      ctx.fillStyle=o[2];
+      bt(merchPrice(o[0])+' COIN',b.x+b.w-13,b.y+b.h/2+7,2,'right',1);
+      ctx.globalAlpha=1;
+    });
+    var cy0=mb.cards.length?mb.cards[0].y:H*0.60;
+    ctx.fillStyle='rgba(255,255,255,0.75)';
+    bt('TRADE',W/2,cy0-30,2,'center',2);
+    if(mb.cards.length){
+      jtx(ownedList().length?'ワトナーを1人わたして1人もらう':'交換できるワトナーがいない',
+          W/2,cy0-12,11,'center','rgba(255,255,255,0.50)');
+      for(var i=0;i<mb.cards.length;i++)
+        drawRareCard(mb.cards[i],merch.stock[i],false,0);
+    }else{
+      jtx('交換はもうおわった',W/2,cy0-12,12,'center','rgba(255,255,255,0.45)');
+    }
+    var cb2=mb.cancel;
+    rrect(cb2.x,cb2.y,cb2.w,cb2.h,cb2.h*0.42);
+    ctx.fillStyle='rgba(0,0,0,0.5)';ctx.fill();
+    ctx.strokeStyle='rgba(255,255,255,0.4)';ctx.lineWidth=1.3;ctx.stroke();
+    ctx.fillStyle='#ffffff';
+    bt('LEAVE',cb2.x+cb2.w/2,cb2.y+cb2.h/2+7,2,'center',1);
+    return;
+  }
+  if(state==='give'){
+    var gb=giveBtns(),Rg=rareById(tradeGet);
+    ctx.fillStyle='#ffffff';
+    bt('GIVE ONE',W/2,H*0.075,3,'center',2);
+    jtx('わたすワトナーをえらぶ',W/2,H*0.103,12,'center','rgba(255,255,255,0.62)');
+    if(Rg){
+      ctx.fillStyle=MERCH_C;
+      bt('GET '+Rg.en,W/2,H*0.142,2,'center',1);
+      jtx(soloLabel(tradeGet),W/2,H*0.172,13,'center','#ffffff');
+    }
+    for(var gi=0;gi<gb.cards.length;gi++){
+      var cc=gb.cards[gi];
+      drawRareCard(cc,cc.id,false,ownCount(cc.id));
+    }
+    var cb3=gb.cancel;
+    rrect(cb3.x,cb3.y,cb3.w,cb3.h,cb3.h*0.42);
+    ctx.fillStyle='rgba(0,0,0,0.5)';ctx.fill();
+    ctx.strokeStyle='rgba(255,255,255,0.4)';ctx.lineWidth=1.3;ctx.stroke();
+    ctx.fillStyle='#ffffff';
+    bt('BACK',cb3.x+cb3.w/2,cb3.y+cb3.h/2+7,2,'center',1);
+    return;
+  }
+  if(state==='tradeok'){
+    ctx.fillStyle='#ffffff';
+    bt('TRADE?',W/2,H*0.115,3,'center',2);
+    jtx('この2人を交換しますか？',W/2,H*0.148,13,'center','rgba(255,255,255,0.70)');
+    var cw2=W*0.30,ch2=cw2*1.20,gy=H*0.215;
+    drawRareCard({x:W*0.5-cw2-16,y:gy,w:cw2,h:ch2},tradeGive,false,ownCount(tradeGive));
+    drawRareCard({x:W*0.5+16,y:gy,w:cw2,h:ch2},tradeGet,true,0);
+    ctx.fillStyle='rgba(255,255,255,0.8)';
+    bt('>',W/2,gy+ch2*0.52,3,'center',1);
+    jtx('わたす',W*0.5-cw2*0.5-16,gy-8,11,'center','rgba(255,160,160,0.85)');
+    jtx('もらう',W*0.5+cw2*0.5+16,gy-8,11,'center',MERCH_C);
+    var tb=tradeBtns();
+    ['yes','no'].forEach(function(k){
+      var b=tb[k],yes=(k==='yes');
+      rrect(b.x,b.y,b.w,b.h,b.h*0.42);
+      ctx.fillStyle=yes?'rgba(60,255,136,0.9)':'rgba(59,59,75,0.95)';ctx.fill();
+      ctx.strokeStyle=yes?'#3cff88':'rgba(255,255,255,0.4)';ctx.lineWidth=1.4;ctx.stroke();
+      ctx.fillStyle=yes?'#062211':'#ffffff';
+      bt(yes?'YES':'NO',b.x+b.w/2,b.y+b.h/2+9,3,'center',2);
+    });
+    return;
+  }
+}
 function drawJail(){
   drawOneJail(girl,jail);
   if(jail2)drawOneJail(girl2,jail2);
@@ -8535,6 +8888,12 @@ var HELP=[
 ['t','撃破の点に加え、燃えたキセキ1つ30点が入る。','Plus 30 for every dot the fuse burns.'],
 ['t','倒したヌメリンは60秒後、キセキの最後尾に戻る。','NUMELIN returns after 60s at the tail of your trail.'],
 ['i','yatsu','ヤツハシは1ゲーム15個。持ち越せる。','82HASHI: 15 per game, carried over.'],
+['s','商人','MERCHANT'],
+['i','merch','商人：'+MERCH_FROM+'面から迷宮を歩き回る。','MERCHANT: walks the labyrinth from stage '+MERCH_FROM+'.'],
+['t','出会うと店が開く。ツルハシと爆弾は1枚安い。','Meet him and his shop opens. PICKAXE and M-BOMB 1 coin off.'],
+['t','ヤツハシは'+MERCH_LURE+'枚で買える。','82HASHI costs '+MERCH_LURE+' coins.'],
+['t','レアワトナーを1人か2人連れている。','He travels with one or two rare WATONERs.'],
+['t','自分のワトナー1人と、1人ずつ交換できる。','Trade one of yours for one of his, one for one.'],
 ['s','ワトナー','WATONER'],
 ['t','牢屋でYESを選ぶと一緒に来る。','Answer YES at the cage and she follows you.'],
 ['t','連れてゴールすると+3000点。','Bring her to the goal for +3000.'],
@@ -8662,6 +9021,7 @@ function helpIcon(kind,x,y,S){
     ctx.fillStyle=ink(0.32);ctx.fill();
     ctx.strokeStyle=ink(0.6);ctx.lineWidth=1.2;ctx.stroke();ctx.restore();return;
   }
+  if(kind==='merch'){drawMerchFig(x,y-S*0.04,S*0.92);return;}
   if(kind==='heart'){drawHeart(x,y-S*0.05,S*0.30,'#ff3b6b',1);return;}
 }
 /* ===== ワトナー図鑑（NEW WATONERSの編成） ===== */
@@ -8775,20 +9135,23 @@ function drawDex(){
       rareOv=R;
       drawGirl(b.x+b.w*0.26,b.y+b.h*0.62,b.h*0.62,1,'s');
       rareOv=null;
-      (function(){                             /* 衣装の英名＋名前。幅に合わせて縮める */
-        var ttl=R.en+' '+soloLabel(R.id);
-        var tx=b.x+b.w*0.36,av=b.w*0.64-10,fs=13;
+      (function(){                             /* 1行目に衣装の英名、2行目に名前 */
+        var L1=R.en,L2=soloLabel(R.id);
+        var tx=b.x+b.w*0.36,fs=12;
+        var av1=b.w*0.64-26;                   /* 1行目は♪印の手前まで */
+        var av2=b.w*0.64-58;                   /* 2行目はLIVEボタンの手前まで */
         var FF='"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif';
         ctx.textAlign='left';ctx.textBaseline='alphabetic';
         ctx.font='600 '+fs+'px '+FF;
-        while(fs>8){
-          var w9=0;
-          try{w9=ctx.measureText(ttl).width;}catch(e){w9=0;}
-          if(w9<=av)break;
+        while(fs>8){                           /* 長い名前は幅に合わせて縮める */
+          var w1=0,w2=0;
+          try{w1=ctx.measureText(L1).width;w2=ctx.measureText(L2).width;}catch(e){}
+          if(w1<=av1&&w2<=av2)break;
           fs--;ctx.font='600 '+fs+'px '+FF;
         }
         ctx.fillStyle='#ffffff';
-        ctx.fillText(ttl,tx,b.y+b.h*0.46);
+        ctx.fillText(L1,tx,b.y+b.h*0.29);
+        ctx.fillText(L2,tx,b.y+b.h*0.29+fs+2);
       })();
       ctx.fillStyle=soloOK(R.id)?'#ffd400':'rgba(255,255,255,0.45)';
       bt('x'+ownCount(R.id)+' / '+soloNeed(R.id),b.x+b.w*0.46,b.y+b.h*0.72,1,'left',1);
@@ -9106,6 +9469,7 @@ function drawOverlay(){
     ctx.fillStyle='#ffffff';
     bt('CANCEL',cb.x+cb.w/2,cb.y+cb.h/2+7,2,'center',1);
   }
+  if(state==='merch'||state==='give'||state==='tradeok')drawMerchScreen();
   if(state==='ask'){
     ctx.fillStyle=DARKBG?'rgba(0,0,0,0.55)':'rgba(255,255,255,0.55)';
     ctx.fillRect(0,oy-4,W,ROWS*cell+8);
@@ -9323,7 +9687,7 @@ function loop(ts){
   }
   drawBed();
   if(nightK<=0)drawMaze();
-  drawShift();drawGates();drawAim();drawBreakFx();drawStartSignal();drawGoalFlag();drawJail();drawHoles();drawCoins();drawBomb();drawDots();drawLures();drawBlockers();drawAmoeba();drawGirlWorld();drawPlayer();drawBoom();
+  drawShift();drawGates();drawAim();drawBreakFx();drawStartSignal();drawGoalFlag();drawJail();drawHoles();drawCoins();drawBomb();drawDots();drawLures();drawBlockers();drawMerch();drawAmoeba();drawGirlWorld();drawPlayer();drawBoom();
   if(nightK>0){
     /* キャラクターや道具はそのままの明るさ。白い壁を上に描く */
     drawMaze();
