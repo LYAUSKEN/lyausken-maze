@@ -8731,6 +8731,22 @@ function drawDex(){
     bt('MIDNIGHT: '+((liveMode==='group'||!soloDone[liveMode])?soloLabel(sl[0]):soloLabel(liveMode)),
        mb.x+mb.w/2,mb.y+mb.h/2+6,2,'center',1);
   }
+  (function(){                                 /* 足りない曲ファイルの数 */
+    var miss=[],i2;
+    for(i2=0;i2<RARE.length;i2++){
+      if(!songExt[RARE[i2].id])miss.push(soloLabel(RARE[i2].id));
+    }
+    ctx.font='400 11px "Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif';
+    ctx.textAlign='center';ctx.textBaseline='alphabetic';
+    if(miss.length){
+      ctx.fillStyle='rgba(255,120,120,0.95)';
+      ctx.fillText('曲ファイルが無い: '+miss.join(' ')
+        .substring(0,46)+(miss.join(' ').length>46?'…':''),W/2,soloList().length?108:86);
+    }else{
+      ctx.fillStyle='rgba(60,255,136,0.75)';
+      ctx.fillText('曲ファイル 18人ぶん そろっています',W/2,soloList().length?108:86);
+    }
+  })();
   var i;
   for(i=0;i<RARE.length;i++){
     var R=RARE[i],b=dexCell(i),has=!!owned[R.id];
@@ -8740,6 +8756,15 @@ function drawDex(){
     ctx.fillStyle=on?'rgba(255,138,192,0.18)':(has?'rgba(255,255,255,0.06)':'rgba(255,255,255,0.03)');ctx.fill();
     ctx.strokeStyle=on?'#ff8ac0':(has?'rgba(255,255,255,0.25)':'rgba(255,255,255,0.10)');
     ctx.lineWidth=on?2:1;ctx.stroke();
+    (function(){                               /* 曲ファイルがあるかの印 */
+      var hv=!!songExt[R.id],hn=!!songExt[R.id+'@night'];
+      ctx.font='400 10px "Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif';
+      ctx.textAlign='right';ctx.textBaseline='alphabetic';
+      ctx.fillStyle=hv?'rgba(60,255,136,0.95)':'rgba(255,90,90,0.95)';
+      ctx.fillText(hv?'♪':'♪ ×',b.x+b.w-8,b.y+14);
+      ctx.fillStyle=hn?'rgba(60,255,136,0.55)':'rgba(255,90,90,0.55)';
+      ctx.fillText(hn?'☾':'☾ ×',b.x+b.w-8,b.y+26);
+    })();
     if(!has){                                  /* 未入手でも必要人数は見せる */
       ctx.fillStyle='rgba(255,255,255,0.30)';
       ctx.font='400 11px "Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif';
