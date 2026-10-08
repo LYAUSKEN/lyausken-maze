@@ -8775,12 +8775,21 @@ function drawDex(){
       rareOv=R;
       drawGirl(b.x+b.w*0.26,b.y+b.h*0.62,b.h*0.62,1,'s');
       rareOv=null;
-      ctx.fillStyle='#ffffff';
-      ctx.font='400 12px "Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif';
-      ctx.textAlign='left';ctx.textBaseline='alphabetic';
-      ctx.fillText(soloDone[R.id]?soloLabel(R.id):R.ja,b.x+b.w*0.46,b.y+b.h*0.40);
-      ctx.fillStyle='rgba(255,255,255,0.6)';
-      bt(R.en,b.x+b.w*0.46,b.y+b.h*0.56,1,'left',1);
+      (function(){                             /* 衣装の英名＋名前。幅に合わせて縮める */
+        var ttl=R.en+' '+soloLabel(R.id);
+        var tx=b.x+b.w*0.36,av=b.w*0.64-10,fs=13;
+        var FF='"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif';
+        ctx.textAlign='left';ctx.textBaseline='alphabetic';
+        ctx.font='600 '+fs+'px '+FF;
+        while(fs>8){
+          var w9=0;
+          try{w9=ctx.measureText(ttl).width;}catch(e){w9=0;}
+          if(w9<=av)break;
+          fs--;ctx.font='600 '+fs+'px '+FF;
+        }
+        ctx.fillStyle='#ffffff';
+        ctx.fillText(ttl,tx,b.y+b.h*0.46);
+      })();
       ctx.fillStyle=soloOK(R.id)?'#ffd400':'rgba(255,255,255,0.45)';
       bt('x'+ownCount(R.id)+' / '+soloNeed(R.id),b.x+b.w*0.46,b.y+b.h*0.72,1,'left',1);
       if(soloDone[R.id]){                        /* デビュー済み */
