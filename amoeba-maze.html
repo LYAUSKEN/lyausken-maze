@@ -1487,7 +1487,7 @@ function loadSong(key){                      // 必要になった時点で読�
   songPend[key]=1;
   if(songExt[key]){
     try{
-      fetch(songExt[key],{cache:'no-cache'}).then(function(r){
+      fetch(songExt[key]).then(function(r){      /* 本体はためて再利用する */
         if(!r||!r.ok){delete songPend[key];return null;}
         return r.arrayBuffer();
       }).then(function(a){
@@ -1512,7 +1512,8 @@ function pickSongKey(id,night){
   if(id&&haveSong(id))return id;
   return 'default';
 }
-var songWait=0;
+var songWait=0,songWaitKey='';
+function songResetWait(){songWait=0;songWaitKey='';}   /* ライブのたびに予算を戻す */
 function soloMusic(id){
   stopSoloSong();
   songInit();
@@ -1523,9 +1524,10 @@ function soloMusic(id){
   var night=(state==='fieldlive');
   var key=pickSongKey(id,night);
   songNow=key;
+  if(songWaitKey!==key){songWait=0;songWaitKey=key;}   /* 別の曲なら予算を戻す */
   if(!songBuf[key]){
     loadSong(key);
-    if(songWait++<60){                       // 読み込みを待つ（最大7秒）
+    if(songWait++<150){                      // 読み込みを待つ（最大18秒）
       setTimeout(function(){if(state==='idol'||state==='fieldlive')soloMusic(id);},120);
       return;
     }
@@ -2379,6 +2381,7 @@ function startFieldLive(){
   }
   aCharm=now;
   musicStop();                                 // 真夜中の曲を止めてバラードへ
+  songResetWait();
   soloMusic(soloId);
 }
 function endFieldLive(){
@@ -3023,6 +3026,7 @@ function startIdol(demo,n,solo){
   for(var i=0;i<idolN;i++){idolSlots.push(i);idolAnim.push({from:i,to:i,t:0});}
   /* 0番から順に猫のお面。最前列のセンターに立つ */
   held=null;
+  songResetWait();                  // 前のライブの待ち時間を引きずらない
   if(soloId)soloMusic(soloId);      // ソロは自作の歌があればそれを使う
   else idolMusic();                 // 暗いうちから曲は流れている
 }
