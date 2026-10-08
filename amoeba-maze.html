@@ -2762,6 +2762,13 @@ function openMerch(){
   beep(520,0.09,0.05,'triangle');
   setTimeout(function(){beep(784,0.14,0.05,'triangle');},90);
 }
+function closeMerch(){
+  merch=null;merchLock=false;                     /* 一度交渉したら立ち去る */
+  tradeGet=null;tradeGive=null;
+  beep(420,0.10,0.045,'triangle');
+  setTimeout(function(){beep(280,0.18,0.05,'triangle');},110);
+  resumeFromAsk();
+}
 function merchPrice(kind){
   return kind==='pick'?MERCH_PICK:(kind==='bomb'?MERCH_BOMB:MERCH_LURE);
 }
@@ -2801,14 +2808,14 @@ function doTrade(){
   setTimeout(function(){beep(1760,0.18,0.05,'triangle');},180);
 }
 function merchBtns(){
-  var w=W*0.70,h=Math.max(30,H*0.050),x=(W-w)/2,y=H*0.205,g=9;
+  var w=W*0.70,h=Math.max(30,H*0.050),x=(W-w)/2,y=H*0.288,g=9;
   var o={pick:{x:x,y:y,w:w,h:h},
          lure:{x:x,y:y+h+g,w:w,h:h},
          bomb:{x:x,y:y+(h+g)*2,w:w,h:h},
          cards:[],
          cancel:{x:W*0.5-W*0.19,y:H*0.885,w:W*0.38,h:Math.max(28,H*0.044)}};
   var n=(merch&&merch.stock)?merch.stock.length:0;
-  var cw=W*0.32,ch=cw*1.20,cy=y+(h+g)*3+H*0.105;
+  var cw=W*0.32,ch=cw*1.20,cy=y+(h+g)*3+H*0.078;
   var tot=n*cw+(n-1)*14,x0=(W-tot)/2;
   for(var i=0;i<n;i++)o.cards.push({x:x0+i*(cw+14),y:cy,w:cw,h:ch});
   return o;
@@ -5861,7 +5868,7 @@ function tap(x,y){
         beep(700,0.08,0.05,'triangle');return;
       }
     }
-    if(inBox(mb.cancel,x,y,8)){beep(240,0.08,0.04,'square');resumeFromAsk();}
+    if(inBox(mb.cancel,x,y,8)){closeMerch();}
   }
   else if(state==='give'){
     if(x===undefined)return;
@@ -8423,6 +8430,31 @@ function jtx(txt,x,y,size,align,col,wt){
   ctx.fillText(txt,x,y);
   ctx.restore();
 }
+function merchBubble(cx,cy,txt,fs){
+  /* 商人の吹き出し */
+  var FF='"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif';
+  ctx.save();
+  ctx.font='700 '+fs+'px '+FF;
+  var tw=fs*txt.length;
+  try{tw=ctx.measureText(txt).width;}catch(e){}
+  var w=tw+22,h=fs+17;
+  var bx=Math.max(6,Math.min(W-w-6,cx-w/2)),by=cy-h/2;
+  rrect(bx,by,w,h,h*0.42);
+  ctx.fillStyle='#ffffff';ctx.fill();
+  ctx.strokeStyle=MERCH_C;ctx.lineWidth=2;ctx.stroke();
+  var t1=bx+w*0.16,t2=bx+w*0.34,tipX=bx+w*0.04,tipY=by+h+13;
+  ctx.beginPath();
+  ctx.moveTo(t1,by+h-1);ctx.lineTo(tipX,tipY);ctx.lineTo(t2,by+h-1);
+  ctx.closePath();ctx.fillStyle='#ffffff';ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(t1,by+h-2);ctx.lineTo(tipX,tipY);ctx.lineTo(t2,by+h-2);
+  ctx.strokeStyle=MERCH_C;ctx.lineWidth=2;ctx.stroke();
+  ctx.font='700 '+fs+'px '+FF;
+  ctx.textAlign='center';ctx.textBaseline='middle';
+  ctx.fillStyle='#14212a';
+  ctx.fillText(txt,bx+w/2,by+h/2+1);
+  ctx.restore();
+}
 function drawRareCard(b,id,sel,cnt){
   var R=rareById(id);
   if(!R)return;
@@ -8444,12 +8476,14 @@ function drawMerchScreen(){
   ctx.fillStyle='rgba(0,0,0,0.90)';ctx.fillRect(0,0,W,H);
   if(state==='merch'){
     var mb=merchBtns();
-    drawMerchFig(W*0.5,H*0.072,Math.max(34,H*0.072));
+    var mS=Math.max(96,H*0.195),mY=H*0.172+Math.sin(now*0.0038)*2.5;
+    drawMerchFig(W*0.335,mY,mS);                   /* 大きな商人 */
+    merchBubble(W*0.715,H*0.088,'いらっしゃいませ',14);
     ctx.fillStyle=MERCH_C;
-    bt('MERCHANT',W/2,H*0.125,3,'center',2);
-    jtx('旅の商人',W/2,H*0.152,12,'center','rgba(255,255,255,0.62)');
+    bt('MERCHANT',W*0.715,H*0.158,2,'center',2);
+    jtx('旅の商人',W*0.715,H*0.182,11,'center','rgba(255,255,255,0.55)');
     ctx.fillStyle='#f2b705';
-    bt('COIN '+wallet,W/2,H*0.185,2,'center',2);
+    bt('COIN '+wallet,W/2,H*0.262,2,'center',2);
     [['pick','PICKAXE',PICK_C,picks],
      ['lure','82HASHI',LURE_C,lureStock],
      ['bomb','M-BOMB',BOMB_C,(hasBomb?1:0)]].forEach(function(o){
@@ -8891,6 +8925,7 @@ var HELP=[
 ['s','商人','MERCHANT'],
 ['i','merch','商人：'+MERCH_FROM+'面から迷宮を歩き回る。','MERCHANT: walks the labyrinth from stage '+MERCH_FROM+'.'],
 ['t','出会うと店が開く。ツルハシと爆弾は1枚安い。','Meet him and his shop opens. PICKAXE and M-BOMB 1 coin off.'],
+['t','商いは1つの面で一度だけ。終わると立ち去る。','One visit per stage. He leaves when you are done.'],
 ['t','ヤツハシは'+MERCH_LURE+'枚で買える。','82HASHI costs '+MERCH_LURE+' coins.'],
 ['t','レアワトナーを1人か2人連れている。','He travels with one or two rare WATONERs.'],
 ['t','自分のワトナー1人と、1人ずつ交換できる。','Trade one of yours for one of his, one for one.'],
