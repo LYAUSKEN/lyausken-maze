@@ -2169,7 +2169,7 @@ function makeNameInput(){
 function nameBox(){return {x:W*0.055,y:H*0.515,w:W*0.56,h:Math.max(30,H*0.050)};}
 function startBtn(){var w=W*0.46,h=Math.max(34,H*0.055);return {x:(W-w)/2,y:H*0.925,w:w,h:h};}
 function howBtn(){var h=Math.max(28,H*0.042);
-  return {x:W*0.06,y:(saveInfo?H*0.775:H*0.855),w:W*0.88,h:h};}
+  return {x:W*0.06,y:(saveInfo?H*0.775:H*0.855),w:W*0.55,h:h};}
 function demoBtn(){var h=Math.max(28,H*0.042);
   return {x:W*0.655,y:(saveInfo?H*0.775:H*0.855),w:W*0.285,h:h};}
 function demoBtn(){var h=Math.max(28,H*0.042);
@@ -5937,6 +5937,12 @@ function tap(x,y){
       beep(660,0.08,0.05,'triangle');
       setTimeout(function(){beep(990,0.14,0.05,'triangle');},90);
       continueGame();return;
+    }
+    if(inBox(demoBtn(),x,y,8)){
+      beep(880,0.08,0.05,'triangle');
+      var pick=demoNext();demoIdx++;            // 押すたびに順番に切り替わる
+      demoFrom='title';startIdol(true,IDOL_N,pick);
+      placeNameInput();return;
     }
     if(allDebut()&&inBox(albumBtn(),x,y,8)){
       openAlbum();return;
@@ -10016,6 +10022,26 @@ function drawTitle(){
   ctx.strokeStyle='rgba(80,240,255,0.8)';ctx.lineWidth=1.4;ctx.stroke();
   ctx.fillStyle='#50f0ff';
   bt('HOW TO PLAY',hb.x+hb.w/2,hb.y+hb.h/2+6,2,'center',1);
+  var db=demoBtn();                             /* 確認用：ソロの舞台だけ見る */
+  rrect(db.x,db.y,db.w,db.h,db.h*0.42);
+  ctx.fillStyle='rgba(255,138,192,0.12)';ctx.fill();
+  ctx.strokeStyle='rgba(255,138,192,0.85)';ctx.lineWidth=1.4;ctx.stroke();
+  ctx.fillStyle=GIRL_DRESS;
+  bt('SOLO',db.x+db.w/2,db.y+db.h/2+6,2,'center',1);
+  ctx.fillStyle='rgba(255,138,192,0.75)';       /* 次に出る子 */
+  ctx.font='400 10px "Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif';
+  ctx.textAlign='center';ctx.textBaseline='alphabetic';
+  (function(){var di=demoNext();
+    ctx.fillText(soloLabel(di),db.x+db.w/2,db.y+db.h+12);
+    var ds=soloSong(di);
+    if(ds){
+      ctx.save();
+      ctx.font='400 10px "Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif';
+      ctx.fillStyle='rgba(255,255,255,0.55)';
+      ctx.fillText(ds,db.x+db.w/2,db.y+db.h+25);
+      ctx.restore();
+    }
+  })();
 
   /* START */
   var sb=startBtn(),pul=0.5+0.5*Math.sin(now*0.005);
