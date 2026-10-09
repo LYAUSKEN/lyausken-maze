@@ -3137,6 +3137,54 @@ function endDemo(){                             /* 確認ライブのあと、�
   }
   toTitle();
 }
+/* ================= 暗証番号 ================= */
+var PIN_CODE='19720914';
+var pinBuf='',pinBad=0;
+function pinKeys(){
+  var w=W*0.22,h=Math.max(44,H*0.062),gx=W*0.045,gy=10;
+  var x0=(W-(3*w+2*gx))/2,y0=H*0.325;
+  var K=['1','2','3','4','5','6','7','8','9','DEL','0','OK'],a=[];
+  for(var i=0;i<12;i++){
+    var r=(i/3)|0,c=i%3;
+    a.push({x:x0+c*(w+gx),y:y0+r*(h+gy),w:w,h:h,k:K[i]});
+  }
+  return a;
+}
+function pinBackBtn(){var w=W*0.36,h=Math.max(30,H*0.042);return {x:(W-w)/2,y:H*0.885,w:w,h:h};}
+function openPin(){
+  pinBuf='';pinBad=0;
+  if(nameEl){nameEl.style.display='none';renameId=null;}
+  state='pin';
+  beep(620,0.08,0.05,'triangle');
+  placeNameInput();
+}
+function pinTry(){
+  if(pinBuf===PIN_CODE){                         /* 合っていたらソロの舞台へ */
+    pinBuf='';pinBad=0;
+    beep(1046,0.08,0.05,'triangle');
+    setTimeout(function(){beep(1318,0.08,0.05,'triangle');},90);
+    setTimeout(function(){beep(1760,0.18,0.05,'triangle');},180);
+    var pick=demoNext();demoIdx++;               /* 押すたびに順番に切り替わる */
+    demoFrom='title';startIdol(true,IDOL_N,pick);
+    placeNameInput();
+  }else{
+    pinBad=now;pinBuf='';
+    beep(180,0.14,0.05,'square');
+    setTimeout(function(){beep(130,0.22,0.05,'square');},130);
+  }
+}
+function pinPush(k){
+  if(k==='DEL'){
+    if(pinBuf.length){pinBuf=pinBuf.slice(0,-1);beep(320,0.06,0.04,'square');}
+    pinBad=0;return;
+  }
+  if(k==='OK'){pinTry();return;}
+  if(pinBuf.length<PIN_CODE.length){
+    pinBuf+=k;pinBad=0;
+    beep(760+pinBuf.length*40,0.05,0.04,'triangle');
+  }
+  if(pinBuf.length>=PIN_CODE.length)pinTry();    /* 桁がそろったら自動で見る */
+}
 function startEnding(){                          /* 18人そろったら終わり */
   musicStop();
   submitScore();
@@ -5940,9 +5988,7 @@ function tap(x,y){
     }
     if(inBox(demoBtn(),x,y,8)){
       beep(880,0.08,0.05,'triangle');
-      var pick=demoNext();demoIdx++;            // 押すたびに順番に切り替わる
-      demoFrom='title';startIdol(true,IDOL_N,pick);
-      placeNameInput();return;
+      openPin();return;                         // 暗証番号を聞く
     }
     if(allDebut()&&inBox(albumBtn(),x,y,8)){
       openAlbum();return;
@@ -5952,6 +5998,18 @@ function tap(x,y){
     }
     if(inBox(hb,x,y,8)){beep(760,0.09,0.05,'triangle');state='help';helpScroll=0;placeNameInput();return;}
     if(inBox(sb,x,y,8)){beep(880,0.09,0.05,'triangle');startGame();}
+    return;
+  }
+  if(state==='pin'){
+    if(x===undefined)return;
+    var pk=pinKeys();
+    for(var pi=0;pi<pk.length;pi++){
+      if(inBox(pk[pi],x,y,4)){pinPush(pk[pi].k);return;}
+    }
+    if(inBox(pinBackBtn(),x,y,8)){
+      beep(300,0.08,0.045,'square');
+      pinBuf='';pinBad=0;state='title';placeNameInput();
+    }
     return;
   }
   if(state==='ending'){
@@ -9884,6 +9942,44 @@ function drawAlbum(){
   ctx.fillStyle='#ffffff';
   bt('BACK',bb.x+bb.w/2,bb.y+bb.h/2+6,2,'center',1);
 }
+function drawPin(){
+  ctx.fillStyle='#05050c';ctx.fillRect(0,0,W,H);
+  ctx.fillStyle=GIRL_DRESS;
+  bt('SOLO',W/2,H*0.098,4,'center',3);
+  jtx('暗証番号を入れてください',W/2,H*0.137,14,'center','rgba(255,255,255,0.70)');
+  /* 入れた桁 */
+  var n=PIN_CODE.length,dw=W*0.052,gx2=W*0.018;
+  var x0=(W-(n*dw+(n-1)*gx2))/2,yy=H*0.215;
+  var shake=(pinBad&&now-pinBad<420)?Math.sin((now-pinBad)*0.06)*5:0;
+  for(var i=0;i<n;i++){
+    var bx=x0+i*(dw+gx2)+shake;
+    if(i<pinBuf.length){
+      ctx.beginPath();ctx.arc(bx+dw*0.5,yy,dw*0.26,0,6.2832);
+      ctx.fillStyle=pinBad?'#ff5a5a':'#ffd400';ctx.fill();
+    }else{
+      ctx.fillStyle=pinBad?'rgba(255,90,90,0.5)':'rgba(255,255,255,0.28)';
+      ctx.fillRect(bx+dw*0.12,yy+dw*0.22,dw*0.76,1.6);
+    }
+  }
+  if(pinBad)jtx('ちがいます',W/2,H*0.268,13,'center','#ff5a5a');
+  /* 数字のボタン */
+  var pk=pinKeys();
+  for(var k2=0;k2<pk.length;k2++){
+    var b=pk[k2],isOK=(b.k==='OK'),isDel=(b.k==='DEL');
+    rrect(b.x,b.y,b.w,b.h,10);
+    ctx.fillStyle=isOK?'rgba(60,255,136,0.12)':'rgba(255,255,255,0.06)';ctx.fill();
+    ctx.strokeStyle=isOK?'rgba(60,255,136,0.75)':(isDel?'rgba(255,255,255,0.35)':'rgba(255,255,255,0.22)');
+    ctx.lineWidth=1.4;ctx.stroke();
+    ctx.fillStyle=isOK?'#3cff88':'#ffffff';
+    bt(b.k,b.x+b.w/2,b.y+b.h/2+(isOK||isDel?6:8),(isOK||isDel)?2:3,'center',1);
+  }
+  var pb2=pinBackBtn();
+  rrect(pb2.x,pb2.y,pb2.w,pb2.h,pb2.h*0.42);
+  ctx.fillStyle='rgba(0,0,0,0.5)';ctx.fill();
+  ctx.strokeStyle='rgba(255,255,255,0.4)';ctx.lineWidth=1.3;ctx.stroke();
+  ctx.fillStyle='#ffffff';
+  bt('BACK',pb2.x+pb2.w/2,pb2.y+pb2.h/2+6,2,'center',1);
+}
 function drawEnding(){
   ctx.fillStyle='#05050c';ctx.fillRect(0,0,W,H);
   var t=now-endAT;
@@ -10057,6 +10153,7 @@ function loop(ts){
   now=ts;dt=Math.min(50,ts-prev||16);prev=ts;
   if(state==='getrare'){update();drawGetRare();requestAnimationFrame(loop);return;}
   if(state==='idol'){update();drawIdol();requestAnimationFrame(loop);return;}
+  if(state==='pin'){drawPin();requestAnimationFrame(loop);return;}
   if(state==='ending'){drawEnding();requestAnimationFrame(loop);return;}
   if(state==='album'){drawAlbum();requestAnimationFrame(loop);return;}
   if(state==='dex'){drawDex();requestAnimationFrame(loop);return;}
