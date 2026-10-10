@@ -10021,7 +10021,8 @@ function drawEnding(){
 /* ================= はじめの説明（11ページ） ================= */
 var guidePage=0,guideT=0,gWrapC={};
 var GUIDE_HEAD=['WELCOME','MANHOLE','WAITING NUMELIN','82HASHI','PICKAXE & BOMB',
- 'COIN & MERCHANT','MIDNIGHT','IDOL DEBUT','MIDNIGHT LIVE','TIP','THE END'];
+ 'COIN & MERCHANT','MIDNIGHT','IDOL DEBUT','MIDNIGHT LIVE','TIP','THE END',
+ 'SAVE & CONTINUE'];
 var GUIDE_TXT=[
  '迷宮M10にようこそ。\n追ってくるヌメリンをかわしながら囚われたワトナーを救出して、旗の立ってるゴールを目指してね！',
  'マンホールの上を通ればマンホールが開けられる。\n軌跡を追ってくるヌメリンをマンホールに落とすと15秒閉じ込められるんだ。その間少し遠くまで逃げられる。\nラウスケンが落ちたらLIFEを1つ失うよ。気をつけて！',
@@ -10033,7 +10034,8 @@ var GUIDE_TXT=[
  'アイドルグループをつくろう！\nワトナーを7人救出したらアイドルグループが結成されるよ。どんどん人数が増えるけど、レアキャラワトナーを7タイプ救出したら NEW WATONERS が結成される。\nそれぞれ規定数集められたらソロデビューできるよ！',
  'ソロデビューしたレアキャラワトナーは、真夜中タイムに野外ライブができる。ライブをしたら全てのヌメリンは歌に酔いしれるので、その間にゴールしよう！\nただし、野外ライブをしたら消えていなくなるので、注意して！',
  'ライブ中に投げ銭してね。\n投げ銭が多ければ多いほどレアキャラワトナーの登場率が上がるよ！',
- 'レアキャラワトナーを全て集めるとゲームが終了。\nおまけに全てが収録されてるオリジナルアルバムデータを差し上げます♩'
+ 'レアキャラワトナーを全てソロデビューさせると\nゲームが終了。\nおまけに全てが収録されてるオリジナルアルバムデータを差し上げます♩',
+ 'ゲームはいつでも終了できるよ。URLをリロードすると表紙に戻るよ。次回プレイする時は、続きから始めることができるよ！'
 ];
 var GUIDE_N=GUIDE_TXT.length;
 function gFont(){
@@ -10375,13 +10377,73 @@ function gScene(i,b,t){
     bt('RARE UP',bx9+bw9/2,by9+30,2,'center',1);
     return;
   }
-  p=(t%5000)/5000;
-  var J=b.h*0.70,jx=b.x+b.w*0.5-J/2,jy=b.y+b.h*0.5-J/2-6;
-  drawJacketArt({x:jx,y:jy,w:J,h:J});
-  ctx.save();ctx.globalAlpha=0.5+0.5*Math.sin(p*Math.PI*2);
-  ctx.fillStyle='#ffd400';
-  bt('THE END',b.x+b.w*0.5,b.y+b.h-10,2,'center',2);
+  if(i===10){
+    p=(t%5000)/5000;
+    var J=b.h*0.70,jx=b.x+b.w*0.5-J/2,jy=b.y+b.h*0.5-J/2-6;
+    drawJacketArt({x:jx,y:jy,w:J,h:J});
+    ctx.save();ctx.globalAlpha=0.5+0.5*Math.sin(p*Math.PI*2);
+    ctx.fillStyle='#ffd400';
+    bt('THE END',b.x+b.w*0.5,b.y+b.h-10,2,'center',2);
+    ctx.restore();
+    return;
+  }
+  /* 12枚目：リロードすると表紙、続きから遊べる */
+  p=(t%5600)/5600;
+  var sw=b.w*0.52,sh=b.h*0.78,sx=b.x+b.w*0.5-sw/2,sy=b.y+b.h*0.5-sh/2+2;
+  rrect(sx,sy,sw,sh,10);
+  ctx.fillStyle='rgba(255,255,255,0.05)';ctx.fill();
+  ctx.strokeStyle='rgba(255,255,255,0.35)';ctx.lineWidth=1.4;ctx.stroke();
+  rrect(sx+8,sy+8,sw-38,13,6);                   /* アドレスバー */
+  ctx.fillStyle='rgba(255,255,255,0.12)';ctx.fill();
+  ctx.fillStyle='rgba(255,255,255,0.35)';
+  ctx.fillRect(sx+14,sy+13.5,sw*0.42,1.4);
+  var rl=(p<0.46);
+  ctx.save();                                     /* リロードの矢印 */
+  ctx.translate(sx+sw-17,sy+14.5);
+  if(rl)ctx.rotate((p/0.46)*Math.PI*4);
+  ctx.strokeStyle=rl?'#3cff88':'rgba(255,255,255,0.45)';
+  ctx.lineWidth=1.8;ctx.lineCap='round';
+  ctx.beginPath();ctx.arc(0,0,6,0.5,5.4);ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(4.6,-4.6);ctx.lineTo(6.6,-1.2);ctx.lineTo(2.6,-1.6);
+  ctx.closePath();
+  ctx.fillStyle=rl?'#3cff88':'rgba(255,255,255,0.45)';ctx.fill();
   ctx.restore();
+  ctx.save();
+  rrect(sx+2,sy+26,sw-4,sh-28,8);ctx.clip();
+  if(rl){                                         /* 遊んでいる途中の画面 */
+    ctx.strokeStyle='rgba(255,255,255,0.45)';ctx.lineWidth=1;
+    for(var g1=0;g1<4;g1++){
+      ctx.beginPath();ctx.moveTo(sx+10,sy+42+g1*16);ctx.lineTo(sx+sw-10,sy+42+g1*16);ctx.stroke();
+    }
+    for(var g2=0;g2<5;g2++){
+      ctx.beginPath();ctx.arc(sx+18+g2*10,sy+58,2.2,0,6.2832);
+      ctx.fillStyle=YEL;ctx.fill();
+    }
+    drawBoy(sx+sw*0.72,sy+58,20,'e');
+    jtx('STAGE 07',sx+sw*0.5,sy+sh-12,10,'center','rgba(255,255,255,0.55)');
+  }else{                                          /* 表紙にもどった */
+    var a12=Math.min(1,(p-0.46)/0.12);
+    ctx.save();ctx.globalAlpha=a12;
+    ctx.fillStyle='#ffffff';
+    bt('M10',sx+sw*0.5,sy+58,4,'center',3);
+    var pw=sw-26,ph=20,px12=sx+13,py12=sy+sh*0.55;
+    var pu12=0.5+0.5*Math.sin(now*0.005);
+    rrect(px12,py12,pw,ph,ph*0.45);
+    ctx.fillStyle='rgba(60,255,136,'+(0.14+0.12*pu12)+')';ctx.fill();
+    ctx.strokeStyle='rgba(60,255,136,'+(0.7+0.3*pu12)+')';ctx.lineWidth=1.4;ctx.stroke();
+    ctx.fillStyle='#3cff88';
+    bt('CONTINUE 07',px12+pw/2,py12+ph/2+5,1,'center',1);
+    rrect(px12+pw*0.26,py12+ph+8,pw*0.48,ph*0.9,ph*0.4);
+    ctx.fillStyle='rgba(255,212,0,0.14)';ctx.fill();
+    ctx.strokeStyle='rgba(255,212,0,0.6)';ctx.lineWidth=1.2;ctx.stroke();
+    ctx.fillStyle='#ffd400';
+    bt('START',px12+pw*0.5,py12+ph+8+ph*0.9/2+5,1,'center',1);
+    ctx.restore();
+  }
+  ctx.restore();
+  ctx.fillStyle=rl?'rgba(255,255,255,0.55)':'#3cff88';
+  bt(rl?'RELOAD':'CONTINUE  07',b.x+b.w*0.5,b.y+b.h-8,2,'center',2);
 }
 function drawGuide(){
   ctx.fillStyle='#05050c';ctx.fillRect(0,0,W,H);
